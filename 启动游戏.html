@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>匣中珠光 - 启动指南</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: radial-gradient(ellipse at center, #2a1810 0%, #150906 60%, #0a0503 100%);
+  min-height: 100vh;
+  color: #e8d5a8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.container {
+  max-width: 640px;
+  width: 100%;
+  text-align: center;
+}
+.title {
+  font-size: 2.5rem;
+  letter-spacing: 0.4em;
+  color: #f0d080;
+  text-shadow: 0 0 30px rgba(240, 208, 128, 0.4);
+  margin-bottom: 0.5rem;
+  font-weight: 300;
+}
+.subtitle {
+  font-size: 1rem;
+  color: #c9a86a;
+  letter-spacing: 0.3em;
+  margin-bottom: 2.5rem;
+  opacity: 0.85;
+}
+.card {
+  background: rgba(40, 28, 15, 0.8);
+  border: 1px solid rgba(212, 168, 85, 0.3);
+  border-radius: 12px;
+  padding: 1.8rem 2rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+.card-title {
+  font-size: 1.15rem;
+  color: #f0d080;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.card-title .icon {
+  font-size: 1.4rem;
+}
+.card p {
+  line-height: 1.8;
+  color: #c9a86a;
+  font-size: 0.92rem;
+  margin-bottom: 0.8rem;
+}
+.btn {
+  display: inline-block;
+  padding: 0.9rem 2.2rem;
+  background: linear-gradient(180deg, rgba(212, 168, 85, 0.2) 0%, rgba(212, 168, 85, 0.1) 100%);
+  border: 1px solid rgba(212, 168, 85, 0.5);
+  border-radius: 8px;
+  color: #f0d080;
+  text-decoration: none;
+  font-size: 1rem;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin: 0.5rem;
+}
+.btn:hover {
+  background: linear-gradient(180deg, rgba(212, 168, 85, 0.35) 0%, rgba(212, 168, 85, 0.2) 100%);
+  border-color: rgba(240, 208, 128, 0.7);
+  box-shadow: 0 0 20px rgba(240, 208, 128, 0.2);
+}
+.btn.primary {
+  background: linear-gradient(180deg, rgba(240, 208, 128, 0.25) 0%, rgba(212, 168, 85, 0.15) 100%);
+  border-color: rgba(240, 208, 128, 0.6);
+}
+.btn-group {
+  text-align: center;
+  margin-top: 1.2rem;
+}
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 168, 85, 0.4), transparent);
+  margin: 1.2rem 0;
+}
+.highlight {
+  color: #f0d080;
+  font-weight: 500;
+}
+.tip {
+  font-size: 0.82rem;
+  color: #a89070;
+  line-height: 1.6;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(212, 168, 85, 0.2);
+}
+.footer {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: #7a6040;
+  letter-spacing: 0.15em;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title">匣中珠光</div>
+  <div class="subtitle">螺钿非遗 · 匠心传承</div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">✨</span> 推荐体验方式（完整3D效果）</div>
+    <p>使用「启动游戏」脚本启动本地服务器，可体验完整的<span class="highlight">3D角色演出</span>和全部功能。</p>
+    <div class="btn-group">
+      <button class="btn primary" onclick="launchVBS()">▶ 启动游戏（推荐）</button>
+    </div>
+    <p style="text-align:center;font-size:0.85rem;color:#a89070;margin-top:0.5rem">
+      或双击运行目录中的 <span class="highlight">启动游戏.bat</span> / <span class="highlight">启动游戏.vbs</span>
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">🎮</span> 快速体验（2D模式）</div>
+    <p>直接在浏览器中打开，使用<span class="highlight">2D立绘</span>进行游戏，剧情和小游戏完全可用。</p>
+    <div class="btn-group">
+      <a href="index.html" class="btn">开始游戏（2D模式）</a>
+    </div>
+    <div class="tip">
+      💡 小提示：3D模式需要本地服务器支持（浏览器CORS安全限制）。<br>
+      2D模式可直接游玩完整剧情，包含所有五个工艺小游戏。
+    </div>
+  </div>
+
+  <div class="footer">
+    「一点螺钿，千年光华」
+  </div>
+</div>
+
+<script>
+function launchVBS() {
+  try {
+    window.location.href = '启动游戏.vbs';
+    setTimeout(function() {
+      alert('如果没有自动启动，请手动双击目录中的「启动游戏.vbs」或「启动游戏.bat」文件。');
+    }, 2000);
+  } catch(e) {
+    alert('请手动双击目录中的「启动游戏.vbs」或「启动游戏.bat」文件来启动游戏。');
+  }
+}
+
+// 检测是否为file://协议
+if(location.protocol === 'file:') {
+  // file:// 下无法直接运行VBS，但可以显示提示
+}
+</script>
+</body>
+</html>

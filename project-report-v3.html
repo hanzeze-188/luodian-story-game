@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>匣中珠光 · 项目综合分析报告 v3</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0604;color:#e8d5b0;font-family:"STKaiti","KaiTi","楷体","Noto Serif SC",serif;line-height:1.9;padding:0}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#1a0f08}
+::-webkit-scrollbar-thumb{background:rgba(212,168,83,.3);border-radius:3px}
+
+.hero{background:radial-gradient(ellipse at center,#2a1810 0%,#150906 60%,#0a0503 100%);padding:5rem 2rem 4rem;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-80px;left:-80px;width:300px;height:300px;border:1px solid rgba(200,160,100,.12);border-radius:50%;animation:pulse 5s ease-in-out infinite}
+.hero::after{content:'';position:absolute;bottom:-80px;right:-80px;width:300px;height:300px;border:1px solid rgba(200,160,100,.08);border-radius:50%;animation:pulse 5s ease-in-out 2.5s infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.3);opacity:.08}}
+.hero-title{font-size:clamp(2rem,6vw,3.5rem);color:#d4a853;text-shadow:0 0 40px rgba(212,168,83,.5),0 0 80px rgba(212,168,83,.2);letter-spacing:.5em;margin-bottom:.5rem;position:relative}
+.hero-sub{font-size:1rem;color:#8a7050;letter-spacing:.6em;margin-bottom:1.5rem}
+.hero-meta{font-size:.82rem;color:#6a5035;letter-spacing:.15em}
+.hero-meta span{color:#a08060}
+
+.container{max-width:960px;margin:0 auto;padding:2rem 1.5rem 4rem}
+
+.section{margin-bottom:3.5rem}
+.section-title{font-size:1.5rem;color:#d4a853;letter-spacing:.35em;margin-bottom:1.5rem;padding-bottom:.6rem;border-bottom:1px solid rgba(212,168,83,.2);position:relative}
+.section-title::before{content:'◆';position:absolute;left:-1.2rem;color:rgba(212,168,83,.5);font-size:.6rem;top:50%;transform:translateY(-50%)}
+
+.card{background:linear-gradient(135deg,rgba(40,24,12,.85),rgba(20,12,6,.92));border:1px solid rgba(200,160,100,.15);border-radius:6px;padding:1.5rem;margin-bottom:1.2rem;transition:border-color .3s}
+.card:hover{border-color:rgba(212,168,83,.35)}
+.card-title{font-size:1.1rem;color:#d4a853;letter-spacing:.15em;margin-bottom:.8rem;display:flex;align-items:center;gap:.6rem}
+.card-title .icon{font-size:1.3rem}
+.card p,.card li{color:#c9b896;font-size:.92rem;line-height:2}
+.card .highlight{color:#d4a853;font-weight:normal}
+.card .dim{color:#8a7050}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat-box{background:rgba(60,35,20,.4);border:1px solid rgba(200,160,100,.12);border-radius:4px;padding:1rem;text-align:center;transition:all .3s}
+.stat-box:hover{border-color:rgba(212,168,83,.3);transform:translateY(-2px)}
+.stat-val{font-size:1.8rem;color:#d4a853;text-shadow:0 0 12px rgba(212,168,83,.3);display:block}
+.stat-label{font-size:.75rem;color:#8a6a3a;letter-spacing:.15em;margin-top:.3rem;display:block}
+
+.feature-table{width:100%;border-collapse:collapse;margin:1rem 0}
+.feature-table th{background:rgba(60,35,20,.6);color:#d4a853;font-size:.8rem;letter-spacing:.15em;padding:.7rem 1rem;text-align:left;border-bottom:1px solid rgba(212,168,83,.25)}
+.feature-table td{padding:.6rem 1rem;border-bottom:1px solid rgba(200,160,100,.08);font-size:.88rem;color:#c9b896;vertical-align:top}
+.feature-table tr:hover td{background:rgba(60,35,20,.25)}
+.feature-table .tag{display:inline-block;background:rgba(212,168,83,.12);border:1px solid rgba(212,168,83,.2);border-radius:3px;padding:1px 8px;font-size:.72rem;color:#d4a853;letter-spacing:.05em}
+.feature-table .tag.new{background:rgba(106,191,106,.1);border-color:rgba(106,191,106,.25);color:#8cc88c}
+
+.progress-bar{background:rgba(60,35,20,.5);border-radius:4px;height:8px;overflow:hidden;margin:.5rem 0}
+.progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#8a5a2a,#d4a853,#e8c878);transition:width .6s}
+.progress-label{display:flex;justify-content:space-between;font-size:.78rem;color:#8a7050;margin-top:.3rem}
+
+.suggestion{background:linear-gradient(135deg,rgba(40,24,12,.85),rgba(20,12,6,.92));border:1px solid rgba(200,160,100,.15);border-radius:6px;padding:1.5rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
+.suggestion::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:linear-gradient(to bottom,#d4a853,rgba(212,168,83,.2))}
+.suggestion.p-high::before{background:linear-gradient(to bottom,#e88a5a,rgba(232,138,90,.2))}
+.suggestion.p-low::before{background:linear-gradient(to bottom,#6abf6a,rgba(106,191,106,.2))}
+.suggestion .s-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
+.suggestion .s-title{font-size:1.05rem;color:#d4a853;letter-spacing:.1em}
+.suggestion .s-priority{font-size:.72rem;padding:3px 10px;border-radius:3px;letter-spacing:.1em}
+.suggestion .s-priority.high{background:rgba(232,138,90,.15);border:1px solid rgba(232,138,90,.3);color:#e88a5a}
+.suggestion .s-priority.medium{background:rgba(212,168,83,.12);border:1px solid rgba(212,168,83,.25);color:#d4a853}
+.suggestion .s-priority.low{background:rgba(106,191,106,.1);border:1px solid rgba(106,191,106,.25);color:#8cc88c}
+.suggestion .s-body{color:#c9b896;font-size:.9rem;line-height:2;margin-bottom:.8rem}
+.suggestion .s-effect{background:rgba(212,168,83,.05);border-left:2px solid rgba(212,168,83,.3);padding:.6rem 1rem;border-radius:0 4px 4px 0;font-size:.84rem;color:#a08060;line-height:1.8}
+
+.roadmap{position:relative;padding-left:2rem}
+.roadmap::before{content:'';position:absolute;left:.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,rgba(212,168,83,.4),rgba(212,168,83,.1))}
+.roadmap-item{position:relative;margin-bottom:2rem}
+.roadmap-item::before{content:'';position:absolute;left:-1.65rem;top:.4rem;width:10px;height:10px;border-radius:50%;background:#d4a853;box-shadow:0 0 10px rgba(212,168,83,.4)}
+.roadmap-phase{font-size:.78rem;color:#8a6a3a;letter-spacing:.2em;margin-bottom:.3rem}
+.roadmap-title{font-size:1.05rem;color:#d4a853;letter-spacing:.1em;margin-bottom:.5rem}
+.roadmap-desc{color:#c9b896;font-size:.88rem;line-height:1.9}
+
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.compare-box{background:rgba(60,35,20,.3);border:1px solid rgba(200,160,100,.1);border-radius:4px;padding:1rem}
+.compare-box.before{border-left:3px solid rgba(191,106,106,.4)}
+.compare-box.after{border-left:3px solid rgba(106,191,106,.4)}
+.compare-label{font-size:.72rem;letter-spacing:.2em;margin-bottom:.5rem}
+.compare-box.before .compare-label{color:#bf6a6a}
+.compare-box.after .compare-label{color:#6abf6a}
+.compare-text{font-size:.85rem;color:#c9b896;line-height:1.8}
+
+.engine-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin:1rem 0}
+.engine-card{background:rgba(60,35,20,.35);border:1px solid rgba(200,160,100,.12);border-radius:6px;padding:1.2rem;text-align:center;transition:all .3s}
+.engine-card:hover{border-color:rgba(212,168,83,.3);transform:translateY(-2px)}
+.engine-card.recommended{border-color:rgba(106,191,106,.35);background:rgba(40,60,30,.2)}
+.engine-name{font-size:1rem;color:#d4a853;letter-spacing:.1em;margin-bottom:.3rem}
+.engine-verdict{font-size:.78rem;color:#8a7050;line-height:1.6;margin-top:.5rem}
+.engine-card.recommended .engine-verdict{color:#8cc88c}
+
+.verdict-box{background:linear-gradient(135deg,rgba(40,60,30,.3),rgba(20,30,15,.4));border:1px solid rgba(106,191,106,.25);border-radius:8px;padding:1.5rem;margin:1.5rem 0;text-align:center}
+.verdict-box.negative{background:linear-gradient(135deg,rgba(60,35,20,.4),rgba(40,22,12,.5));border-color:rgba(212,168,83,.25)}
+.verdict-title{font-size:1.2rem;color:#8cc88c;letter-spacing:.2em;margin-bottom:.5rem}
+.verdict-box.negative .verdict-title{color:#d4a853}
+.verdict-text{font-size:.92rem;color:#c9b896;line-height:2}
+
+.flow-chart{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.3rem;margin:1rem 0;font-size:.82rem}
+.flow-node{background:rgba(60,35,20,.5);border:1px solid rgba(200,160,100,.2);border-radius:4px;padding:.4rem .8rem;color:#c9b896}
+.flow-node.active{border-color:#d4a853;color:#d4a853}
+.flow-arrow{color:#6a5035;font-size:.7rem}
+
+.toc{margin-bottom:2.5rem}
+.toc a{display:block;color:#8a7050;font-size:.88rem;letter-spacing:.1em;padding:.4rem .8rem;border-left:2px solid rgba(200,160,100,.1);text-decoration:none;transition:all .2s}
+.toc a:hover{color:#d4a853;border-left-color:rgba(212,168,83,.4);background:rgba(60,35,20,.2)}
+
+footer{text-align:center;padding:3rem 2rem;color:#4a3525;font-size:.78rem;letter-spacing:.1em;border-top:1px solid rgba(200,160,100,.08)}
+
+@media(max-width:600px){
+.container{padding:1rem}
+.stat-grid{grid-template-columns:repeat(2,1fr)}
+.compare{grid-template-columns:1fr}
+.engine-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+<div class="hero-title">匣中珠光</div>
+<div class="hero-sub">项目综合分析报告 · 第三版</div>
+<div class="hero-meta">分析日期：<span>2026年7月12日</span> &nbsp;|&nbsp; 文件规模：<span>2261 行</span> &nbsp;|&nbsp; 整体优化度：<span>78%</span></div>
+</div>
+
+<div class="container">
+
+<!-- 目录 -->
+<div class="toc">
+<div class="section-title">目 录</div>
+<a href="#overview">一、项目总览</a>
+<a href="#architecture">二、技术架构</a>
+<a href="#features">三、功能清单</a>
+<a href="#changes">四、版本演进</a>
+<a href="#engine">五、引擎选型分析</a>
+<a href="#music">六、音乐系统评估</a>
+<a href="#suggestions">七、优化建议（12 条）</a>
+<a href="#roadmap">八、开发路线图</a>
+<a href="#competition">九、竞赛加分策略</a>
+</div>
+
+<!-- 一、项目总览 -->
+<div class="section" id="overview">
+<div class="section-title">一、项目总览</div>
+
+<p style="color:#c9b896;font-size:.92rem;line-height:2;margin-bottom:1.5rem">
+「匣中珠光」是一款以中国传统螺钿工艺为主题的浏览器互动剧情游戏。玩家扮演一位年轻学徒，在老匠人的指导下体验五道螺钿工序，与阿莲交流，最终完成一件螺钿作品。游戏采用<span class="highlight">纯前端单文件架构</span>，无任何框架依赖，包含完整的对话分支、五个 Canvas 小游戏、成就系统、知识卡片、造物模式和 NG+ 二周目。
+</p>
+
+<div class="stat-grid">
+<div class="stat-box"><span class="stat-val">2261</span><span class="stat-label">代码行数</span></div>
+<div class="stat-box"><span class="stat-val">1</span><span class="stat-label">源文件数</span></div>
+<div class="stat-box"><span class="stat-val">0</span><span class="stat-label">外部依赖</span></div>
+<div class="stat-box"><span class="stat-val">27+</span><span class="stat-label">对话分支</span></div>
+<div class="stat-box"><span class="stat-val">5</span><span class="stat-label">Canvas 小游戏</span></div>
+<div class="stat-box"><span class="stat-val">16</span><span class="stat-label">成就项</span></div>
+<div class="stat-box"><span class="stat-val">4</span><span class="stat-label">游戏结局</span></div>
+<div class="stat-box"><span class="stat-val">9</span><span class="stat-label">记忆碎片</span></div>
+<div class="stat-box"><span class="stat-val">5</span><span class="stat-label">知识卡片</span></div>
+<div class="stat-box"><span class="stat-val">3</span><span class="stat-label">存档槽位</span></div>
+<div class="stat-box"><span class="stat-val">7</span><span class="stat-label">粒子类型</span></div>
+<div class="stat-box"><span class="stat-val">4</span><span class="stat-label">音乐 Mood</span></div>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">📂</span>项目文件结构</div>
+<table class="feature-table">
+<tr><th>文件</th><th>类型</th><th>说明</th></tr>
+<tr><td>index.html</td><td>源文件</td><td>完整游戏（HTML + CSS + JS，2261 行）</td></tr>
+<tr><td>project-analysis.html</td><td>分析报告</td><td>第一版分析报告（外部生成）</td></tr>
+<tr><td>project-report-v2.html</td><td>分析报告</td><td>第二版分析报告（外部生成）</td></tr>
+<tr><td>node_modules/</td><td>工具</td><td>Playwright 测试依赖（已不使用）</td></tr>
+</table>
+</div>
+</div>
+
+<!-- 二、技术架构 -->
+<div class="section" id="architecture">
+<div class="section-title">二、技术架构</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">🏗️</span>架构概览</div>
+<p>
+整个游戏采用<span class="highlight">单 HTML 文件 + IIFE 封装</span>架构。CSS（约 287 行）、HTML DOM（约 68 行）、JavaScript（约 1906 行）全部内联。全局状态对象 <code style="color:#d4a853">G</code> 挂在 <code style="color:#d4a853">window</code> 上，通过显式导出暴露必要接口供调试和测试使用。
+</p>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">🎨</span>渲染层</div>
+<p>
+Canvas 2D API 承担所有场景渲染。核心优化手段是<span class="highlight">离屏静态缓存</span>（Offscreen Canvas）：将复杂的木墙、窗户、工作台等静态元素渲染到独立 Canvas，主循环仅执行 <code style="color:#d4a853">drawImage</code> 一次 blit。动态层（角色、粒子、光线）叠加在静态底图上。DPR 自适应（上限 2x）确保高分屏清晰度，防抖 resize（150ms）避免频繁重绘。
+</p>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">🔊</span>音频层</div>
+<p>
+完全基于 Web Audio API 的程序化音频系统，无需任何音频文件。<span class="highlight">AudioSys</span> 生成 4 种音效（click/success/fail/swoosh），<span class="highlight">MusicSys</span> 实现程序化五声音阶背景音乐，含 4 种 mood（title/prologue/craft/ending）、暖色 waveshaper、并联延迟混响和自适应 tempo。信号链为：oscillator → gain → master → lowpass(2400Hz) → waveshaper → destination + delay feedback(340ms/26%)。
+</p>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">💾</span>持久化层</div>
+<p>
+基于 localStorage 的三级存储：<span class="highlight">自动存档</span>（xzzg_save_v3）、<span class="highlight">3 个手动存档槽</span>（xzzg_save_v3_1/2/3）、<span class="highlight">设置</span>（xzzg_settings）和<span class="highlight">成就</span>（xzzg_achievements_v1）。存档内容涵盖所有流程状态、工艺质量评分、已读对话和收集进度。
+</p>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">✨</span>粒子引擎</div>
+<p>
+对象池模式的 2D 粒子系统，支持 7 种粒子类型（尘埃、萤火虫、光晕、贝壳火花、闪烁、花瓣），池上限 50，活跃数根据屏幕面积和画质设置动态调整（12-30）。含风力模拟（正弦波风场）、萤火虫双层闪烁、贝壳火花 HSL 色相偏移等特殊效果。
+</p>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">♿</span>无障碍支持</div>
+<p>
+全面使用 ARIA 属性：<code style="color:#d4a853">role</code>（region/dialog/menu/toolbar/group/img）、<code style="color:#d4a853">aria-label</code>、<code style="color:#d4a853">aria-live="polite"</code>、<code style="color:#d4a853">aria-hidden</code> 覆盖所有交互元素。Canvas 元素带有描述性 aria-label。在同类单文件游戏中极为少见。
+</p>
+</div>
+</div>
+
+<!-- 三、功能清单 -->
+<div class="section" id="features">
+<div class="section-title">三、功能清单</div>
+
+<table class="feature-table">
+<tr><th>模块</th><th>说明</th><th>状态</th></tr>
+<tr><td>标题画面</td><td>渐变背景、贝壳浮动动画、SVG favicon、5 个主菜单按钮</td><td><span class="tag">完整</span></td></tr>
+<tr><td>对话系统</td><td>打字机效果（3 档速度）、选项分支、跳过按钮、自动模式、对话日志（搜索）</td><td><span class="tag">完整</span></td></tr>
+<tr><td>表情系统</td><td>正则情感检测（happy/surprised/sad/serious/normal），驱动角色眼部/嘴型/头部偏移</td><td><span class="tag">完整</span></td></tr>
+<tr><td>角色绘制</td><td>老匠人（白发胡须）+ 阿莲（粉衣金饰），呼吸微动 + 说话口型 + 表情联动</td><td><span class="tag">完整</span></td></tr>
+<tr><td>场景渲染</td><td>程序化木墙/窗户/灯笼/卷轴/工具架/工作台，离屏缓存 + 动态光线/粒子</td><td><span class="tag">完整</span></td></tr>
+<tr><td>选材系统</td><td>3 种贝材（鲍鱼贝/夜光螺/白蝶贝）+ 3 种纹样（缠枝莲/喜鹊登梅/海波纹）</td><td><span class="tag">完整</span></td></tr>
+<tr><td>拓样小游戏</td><td>按住描线，逐点偏差评价，3 种纹样路径，excellent/pass/fail 三级</td><td><span class="tag">完整</span></td></tr>
+<tr><td>裁切小游戏</td><td>力度条控制（按住增/松开减），绿色安全区，超时红色警告</td><td><span class="tag">完整</span></td></tr>
+<tr><td>打磨小游戏</td><td>36 段弧形分段，顺/逆时针检测，过度打磨惩罚</td><td><span class="tag">完整</span></td></tr>
+<tr><td>髹漆小游戏</td><td>14×9 网格涂刷，距离衰减，灰尘系统（5 秒清除窗口）</td><td><span class="tag">完整</span></td></tr>
+<tr><td>嵌钿小游戏</td><td>拖动对齐，欧几里得距离判定，虚线引导 + 百分比 + 确认环</td><td><span class="tag">完整</span></td></tr>
+<tr><td>三星评价</td><td>每个小游戏结算显示 0-3 星，CSS scale+rotate 动画</td><td><span class="tag">完整</span></td></tr>
+<tr><td>成就系统</td><td>16 项成就，Toast 通知（滑入/音效联动），本地持久化</td><td><span class="tag">完整</span></td></tr>
+<tr><td>知识卡片</td><td>5 道工序知识 + 匠人之言 + 三选一测验，答对计数</td><td><span class="tag">完整</span></td></tr>
+<tr><td>成就面板</td><td>Grid 展示全部 16 项，解锁/锁定视觉区分，进度统计</td><td><span class="tag">完整</span></td></tr>
+<tr><td>图鉴系统</td><td>4 标签页（贝材/纹样/工艺/记忆），锁定/解锁状态，解锁提示</td><td><span class="tag">完整</span></td></tr>
+<tr><td>存档系统</td><td>自动存档 + 3 手动槽，元数据展示（时间/章节/场景）</td><td><span class="tag">完整</span></td></tr>
+<tr><td>设置面板</td><td>音效/音乐开关、流畅模式、文字速度（3 档）、自动模式</td><td><span class="tag">完整</span></td></tr>
+<tr><td>结局系统</td><td>积分制 4 结局（圆满/匠心/记忆/遗憾），评分面板，NG+ 触发</td><td><span class="tag">完整</span></td></tr>
+<tr><td>NG+ 二周目</td><td>隐藏对话线、贝纹相宜之说（9 种搭配）、跳过已读、图鉴提示增强</td><td><span class="tag">完整</span></td></tr>
+<tr><td>造物模式</td><td>独立创作：3 贝材×3 纹样×3 漆色，实时 Canvas 预览</td><td><span class="tag">完整</span></td></tr>
+<tr><td>新手引导</td><td>气泡式引导提示，防重复，7 秒自动消失</td><td><span class="tag">完整</span></td></tr>
+<tr><td>转场动画</td><td>珠光扩散 + 章节名淡入淡出，1.8s 过渡</td><td><span class="tag">完整</span></td></tr>
+<tr><td>背景音乐</td><td>程序化五声音阶，4 种 mood，暖色 waveshaper + 延迟混响</td><td><span class="tag">完整</span></td></tr>
+</table>
+
+<div class="card" style="margin-top:1.5rem">
+<div class="card-title"><span class="icon">📊</span>功能完成度</div>
+<div style="margin-bottom:.8rem">
+<div class="progress-label"><span>核心玩法（对话 + 小游戏）</span><span>100%</span></div>
+<div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+</div>
+<div style="margin-bottom:.8rem">
+<div class="progress-label"><span>辅助系统（成就/图鉴/存档/设置）</span><span>100%</span></div>
+<div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+</div>
+<div style="margin-bottom:.8rem">
+<div class="progress-label"><span>教育融合（知识卡片/测验）</span><span>100%</span></div>
+<div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+</div>
+<div style="margin-bottom:.8rem">
+<div class="progress-label"><span>重玩价值（NG+/造物/多结局）</span><span>85%</span></div>
+<div class="progress-bar"><div class="progress-fill" style="width:85%"></div></div>
+</div>
+<div style="margin-bottom:.8rem">
+<div class="progress-label"><span>视听表现力</span><span>65%</span></div>
+<div class="progress-bar"><div class="progress-fill" style="width:65%"></div></div>
+</div>
+<div style="margin-bottom:.8rem">
+<div class="progress-label"><span>代码架构与可维护性</span><span>40%</span></div>
+<div class="progress-bar"><div class="progress-fill" style="width:40%"></div></div>
+</div>
+</div>
+</div>
+
+<!-- 四、版本演进 -->
+<div class="section" id="changes">
+<div class="section-title">四、版本演进</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">📈</span>文件增长轨迹</div>
+<table class="feature-table">
+<tr><th>版本</th><th>行数</th><th>新增内容</th></tr>
+<tr><td>v1（初始）</td><td>~1515</td><td>核心游戏：对话、5 个小游戏、基础存档</td></tr>
+<tr><td>v2</td><td>~2015</td><td>+500 行：成就系统、知识卡片、三星评价、背景音乐、NG+、造物模式、无障碍</td></tr>
+<tr><td>v3（当前）</td><td>2261</td><td>+246 行：知识卡片测验系统、新手引导、贝纹相宜之说、ARIA 增强、更多对话分支</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">🆕</span>v2 → v3 主要新增</div>
+
+<div class="compare">
+<div class="compare-box before">
+<div class="compare-label">v2 · 知识卡片</div>
+<div class="compare-text">仅展示工艺知识和匠人之言，单向阅读</div>
+</div>
+<div class="compare-box after">
+<div class="compare-label">v3 · 知识卡片 + 测验</div>
+<div class="compare-text">新增三选一测验，答对计数，5 题全对解锁「博学匠徒」成就，防重复作答</div>
+</div>
+</div>
+
+<div class="compare">
+<div class="compare-box before">
+<div class="compare-label">v2 · 成就 15 项</div>
+<div class="compare-text">15 项成就，覆盖流程/工艺/结局/收集</div>
+</div>
+<div class="compare-box after">
+<div class="compare-label">v3 · 成就 16 项</div>
+<div class="compare-text">新增「博学匠徒」—— 知识测验全对成就，强化教育价值</div>
+</div>
+</div>
+
+<div class="compare">
+<div class="compare-box before">
+<div class="compare-label">v2 · NG+ 基础</div>
+<div class="compare-text">二周目标记 + 跳过已读</div>
+</div>
+<div class="compare-box after">
+<div class="compare-label">v3 · NG+ 深度内容</div>
+<div class="compare-text">新增 prologue_memory 隐藏对话线、material_recall 回忆选项、pattern_combo 贝纹相宜之说（9 种搭配知识）</div>
+</div>
+</div>
+
+<div class="compare">
+<div class="compare-box before">
+<div class="compare-label">v2 · 无障碍</div>
+<div class="compare-text">部分 aria 属性</div>
+</div>
+<div class="compare-box after">
+<div class="compare-label">v3 · 全面 ARIA</div>
+<div class="compare-text">role/aria-label/aria-live/aria-hidden 覆盖全部交互元素，Canvas 带描述性标签</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">✅</span>初版 10 条建议完成追踪</div>
+<table class="feature-table">
+<tr><th>原始建议</th><th>状态</th><th>实现情况</th></tr>
+<tr><td>1. 添加背景音乐</td><td style="color:#6abf6a">✔ 已完成</td><td>MusicSys 程序化五声音阶，4 种 mood，暖色滤波+延迟混响</td></tr>
+<tr><td>2. 成就系统</td><td style="color:#6abf6a">✔ 已完成</td><td>16 项成就，Toast 通知+本地持久化+面板展示</td></tr>
+<tr><td>3. 多存档槽位</td><td style="color:#6abf6a">✔ 已完成</td><td>3 个手动存档槽+自动存档，元数据展示</td></tr>
+<tr><td>4. 小游戏难度递进</td><td style="color:#6abf6a">✔ 已完成</td><td>三星评价系统+力度衰减参数调优</td></tr>
+<tr><td>5. 剧情分支扩展</td><td style="color:#6abf6a">✔ 已完成</td><td>27+ 分支，NG+ 隐藏线，贝纹相宜之说</td></tr>
+<tr><td>6. 角色表情动画</td><td style="color:#6abf6a">✔ 已完成</td><td>detectExpr 正则情感检测，5 种表情驱动眼/嘴/头部</td></tr>
+<tr><td>7. 非遗教育深化</td><td style="color:#6abf6a">✔ 已完成</td><td>5 张知识卡片+测验系统+匠人之言</td></tr>
+<tr><td>8. 新手引导</td><td style="color:#6abf6a">✔ 已完成</td><td>气泡引导，防重复，自动消失</td></tr>
+<tr><td>9. 性能优化</td><td style="color:#6abf6a">✔ 已完成</td><td>粒子对象池+动态上限+低画质模式+静态缓存</td></tr>
+<tr><td>10. 代码模块化拆分</td><td style="color:#bf6a6a">✘ 未实施</td><td>仍为单文件 2261 行，IIFE 封装但未拆分模块</td></tr>
+</table>
+</div>
+</div>
+
+<!-- 五、引擎选型分析 -->
+<div class="section" id="engine">
+<div class="section-title">五、引擎选型分析</div>
+
+<div class="verdict-box negative">
+<div class="verdict-title">结论：不建议引入游戏引擎</div>
+<div class="verdict-text">当前项目已高度成熟，引入引擎的迁移成本远大于收益。以下是各引擎的详细评估。</div>
+</div>
+
+<div class="engine-grid">
+<div class="engine-card">
+<div class="engine-name">Phaser 3</div>
+<div class="engine-verdict">功能过剩。Phaser 擅长精灵动画、物理引擎、tilemap，而本项目以静态场景+对话为主，小游戏逻辑高度定制化。迁移需重写全部 Canvas 渲染和小游戏交互，约 1900 行 JS 需要重构。</div>
+</div>
+<div class="engine-card">
+<div class="engine-name">Cocos Creator</div>
+<div class="engine-verdict">学习曲线陡峭。编辑器+TypeScript 工作流与当前纯 HTML/JS 项目差异巨大。打包体积大，对单文件部署的 Web 游戏来说是负担。</div>
+</div>
+<div class="engine-card">
+<div class="engine-name">Godot</div>
+<div class="engine-verdict">方向不符。Godot 是通用 2D/3D 引擎，GDScript 语言需要完全重写。Web 导出体积大（~15MB WASM），失去零依赖、即开即玩的核心优势。</div>
+</div>
+<div class="engine-card">
+<div class="engine-name">PixiJS</div>
+<div class="engine-verdict">可以考虑但非必要。PixiJS 是轻量渲染库（非完整引擎），WebGL 加速可提升粒子性能。但当前 Canvas 2D 性能已足够，引入后仍需自建对话/音频/存档框架。</div>
+</div>
+<div class="engine-card recommended">
+<div class="engine-name">保持现状 ✓</div>
+<div class="engine-verdict">零依赖、即开即玩、单文件部署是本项目核心竞争力。所有功能已完善，架构稳定。建议继续在现有架构上迭代。</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">⚖️</span>迁移成本对比</div>
+<table class="feature-table">
+<tr><th>维度</th><th>当前架构</th><th>迁移至引擎</th></tr>
+<tr><td>代码重写量</td><td>0</td><td>~1900 行（几乎全部 JS）</td></tr>
+<tr><td>学习成本</td><td>无</td><td>1-3 个月</td></tr>
+<tr><td>部署体积</td><td>&lt;100KB</td><td>500KB-15MB</td></tr>
+<tr><td>启动速度</td><td>即时</td><td>引擎加载+初始化</td></tr>
+<tr><td>定制化能力</td><td>完全可控</td><td>受限于引擎 API</td></tr>
+<tr><td>TRAE 评审印象</td><td>技术功底展示</td><td>可能被质疑依赖工具</td></tr>
+</table>
+</div>
+</div>
+
+<!-- 六、音乐系统评估 -->
+<div class="section" id="music">
+<div class="section-title">六、音乐系统评估</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">🎵</span>当前音乐系统</div>
+<p>
+MusicSys 是一个精巧的程序化音乐生成器，基于 Web Audio API 实现。它使用五声音阶（宫/商调式）、暖色 waveshaper 模拟木质共鸣、并联延迟反馈（340ms/26%）和 4 种 mood 配置。每个音随机选择音阶度数、八度和时长，40% 概率叠加低八度三角波衬底，25% 概率叠加高八度音。tempo 自适应（基础间隔 × 0.6~1.4 随机因子）。
+</p>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">🎼</span>音乐升级方案</div>
+<table class="feature-table">
+<tr><th>方案</th><th>优势</th><th>劣势</th><th>推荐度</th></tr>
+<tr><td>保持程序化生成</td><td>零文件体积、无限变化、技术亮点</td><td>音色单一、缺乏情感层次</td><td style="color:#6abf6a">★★★★</td></tr>
+<tr><td>加载 MIDI + Tone.js</td><td>可用真实音色、文件小（~50KB）</td><td>需引入 Tone.js 库（~400KB）</td><td style="color:#d4a853">★★★</td></tr>
+<tr><td>加载 MP3/OGG 音频</td><td>最高音质、情感表达力强</td><td>文件体积大（1-5MB）、破坏零依赖</td><td style="color:#8a7050">★★</td></tr>
+<tr><td>增强当前系统</td><td>保持零依赖、提升表现力</td><td>需要音频 DSP 知识</td><td style="color:#6abf6a">★★★★★</td></tr>
+</table>
+
+<div style="margin-top:1.2rem">
+<p style="color:#8cc88c;font-size:.9rem;letter-spacing:.1em;margin-bottom:.5rem">★ 推荐方案：增强当前程序化系统</p>
+<p style="color:#c9b896;font-size:.88rem;line-height:1.9">
+可在不引入外部文件的前提下提升音乐表现力：增加和弦进行（I-IV-V-I）、添加琶音伴奏层、引入简单旋律片段（4-8 小节循环）、使用 ADSR 包络替代固定 gain 控制、添加 tremolo/vibrato 调制。这些改进可将程序化音乐从「氛围音」提升至「有旋律感的背景音乐」级别。
+</p>
+</div>
+</div>
+</div>
+
+<!-- 七、优化建议 -->
+<div class="section" id="suggestions">
+<div class="section-title">七、优化建议</div>
+
+<div class="suggestion p-high">
+<div class="s-head">
+<div class="s-title">1. 程序化音乐增强</div>
+<div class="s-priority high">高优先</div>
+</div>
+<div class="s-body">
+当前 MusicSys 生成的是随机音阶氛围音，缺乏旋律记忆点。建议增加：ADSR 包络控制（attack/decay/sustain/release）使音符更自然；基础和弦进行（如 C-Am-F-G 五声变体）为每个 mood 建立和声骨架；4-8 小节旋律片段（预定义音程序列）在随机音之间穿插，形成主题感；tremolo 调制（LFO 控制 gain）为长音添加颤动效果。
+</div>
+<div class="s-effect">效果：背景音乐从「环境音」提升至「有辨识度的主题旋律」，玩家可通过音乐感知场景情绪变化，增强沉浸感。</div>
+</div>
+
+<div class="suggestion p-high">
+<div class="s-head">
+<div class="s-title">2. 角色表现力增强</div>
+<div class="s-priority high">高优先</div>
+</div>
+<div class="s-body">
+当前角色为静态简笔画 + 表情切换。建议增加：说话时身体微幅摇摆（正弦波驱动 torso 偏移）；手势动作（挥手/抱拳/指引，关键对话时触发）；眨眼动画（随机间隔 3-7 秒，闭眼 200ms）；对话情绪色彩光环（悲伤时角色周围淡蓝色光晕，喜悦时暖黄色光晕）。这些都可以用纯 Canvas 实现，无需外部资源。
+</div>
+<div class="s-effect">效果：角色从「符号化图标」变成「有生命力的角色」，对话场景的情感传达大幅提升。对 TRAE 评审的视觉印象深刻。</div>
+</div>
+
+<div class="suggestion">
+<div class="s-head">
+<div class="s-title">3. 小游戏难度递进可视化</div>
+<div class="s-priority medium">中优先</div>
+</div>
+<div class="s-body">
+当前五个小游戏的评价阈值是固定的。建议添加：动态难度提示（首次玩显示「轻松模式」/「挑战模式」选择）；连续优秀时解锁「匠人挑战」（更严格阈值但额外成就奖励）；小游戏回放功能（完成后可观看自己的操作轨迹）；每个小游戏的最佳成绩记录与排行榜（localStorage 存储 top 3）。
+</div>
+<div class="s-effect">效果：增加小游戏的重玩价值和挑战深度，为高水平玩家提供额外目标。</div>
+</div>
+
+<div class="suggestion">
+<div class="s-head">
+<div class="s-title">4. 场景氛围时间系统</div>
+<div class="s-priority medium">中优先</div>
+</div>
+<div class="s-body">
+当前场景光照是静态的。建议引入基于章节的「时间流逝」系统：序章为清晨（淡金色光线从左窗投入），中段为午后（光线从上方直射），告别场景为黄昏（橙红色渐变+长阴影），结局为月夜（银蓝色调+月光束）。通过在不同章节切换 buildPrologueStatic 中的窗户光线参数和叠加色彩滤镜即可实现。
+</div>
+<div class="s-effect">效果：玩家通过光线变化感知时间推移，增强叙事沉浸感。「月夜」结局与螺钿「月光映照」主题完美呼应。</div>
+</div>
+
+<div class="suggestion">
+<div class="s-head">
+<div class="s-title">5. 对话系统增强</div>
+<div class="s-priority medium">中优先</div>
+</div>
+<div class="s-body">
+建议添加：对话回放功能（结局后可在图鉴中重新体验已解锁的关键对话）；角色立绘差分（同一角色不同情绪的 Canvas 绘制预设，关键剧情时切换）；对话标记系统（玩家可标记喜欢的对话，存储在 localStorage，图鉴中设「收藏」标签页展示）；打字机效果增加标点停顿（逗号 100ms、句号 200ms、问号/叹号 300ms），使阅读节奏更自然。
+</div>
+<div class="s-effect">效果：对话体验从「阅读文本」提升为「体验故事」，标点停顿让叙事节奏更舒适。</div>
+</div>
+
+<div class="suggestion">
+<div class="s-head">
+<div class="s-title">6. 代码架构优化</div>
+<div class="s-priority medium">中优先</div>
+</div>
+<div class="s-body">
+当前 2261 行单文件虽然功能完整，但维护成本较高。建议（在不改变单文件部署的前提下）：使用注释分隔逻辑模块（如 <code style="color:#d4a853">// ═══ Module: Dialogue ═══</code>）；将各小游戏封装为独立对象（<code style="color:#d4a853">MiniGames.tracing</code>、<code style="color:#d4a853">MiniGames.cutting</code>）；状态管理引入简单的事件系统（状态变更时触发回调，而非散落的 if 判断）；CSS 使用 CSS 自定义属性（<code style="color:#d4a853">--color-gold: #d4a853</code>）替代硬编码色值。
+</div>
+<div class="s-effect">效果：代码可读性和可维护性大幅提升，后续添加新功能时不会破坏已有逻辑。对 TRAE 代码评审有直接加分。</div>
+</div>
+
+<div class="suggestion">
+<div class="s-head">
+<div class="s-title">7. 造物模式扩展</div>
+<div class="s-priority medium">中优先</div>
+</div>
+<div class="s-body">
+当前造物模式支持 3×3×3 = 27 种组合。建议扩展：增加自定义纹样绘制（简化版拓样小游戏，在造物模式中自由绘制纹样）；作品保存为 PNG 下载（<code style="color:#d4a853">canvas.toDataURL()</code>）；作品画廊（localStorage 存储历史作品缩略图，最多 12 件）；增加更多漆色选项（青瓷绿、象牙白、墨玉黑）和器物形状（盘、碗、屏风）。
+</div>
+<div class="s-effect">效果：造物模式从「预览工具」变成「创作沙盒」，大幅提升游戏的创意表达价值和社交分享潜力。</div>
+</div>
+
+<div class="suggestion p-low">
+<div class="s-head">
+<div class="s-title">8. 环境音效层</div>
+<div class="s-priority low">低优先</div>
+</div>
+<div class="s-body">
+在现有 AudioSys 基础上添加环境音效层：工坊场景有轻微的木工声（低频噪声脉冲）、窗外的风声（滤波白噪声）、远处的鸟鸣（高频正弦波随机触发）。这些效果可完全通过 Web Audio API 生成，无需音频文件。每种环境音效可设置独立的音量和开关。
+</div>
+<div class="s-effect">效果：营造更立体的空间感，工坊场景不再是「静音画面+背景音乐」，而是有声音质感的真实空间。</div>
+</div>
+
+<div class="suggestion p-low">
+<div class="s-head">
+<div class="s-title">9. 移动端体验优化</div>
+<div class="s-priority low">低优先</div>
+</div>
+<div class="s-body">
+当前已有触摸支持和响应式 CSS，但可进一步优化：小游戏 Canvas 在移动端的自适应尺寸（当前固定 460×260）；添加触觉反馈（<code style="color:#d4a853">navigator.vibrate()</code>，在成就解锁、小游戏评价等关键时刻触发）；PWA 支持（Service Worker + manifest，实现离线可玩和添加到主屏幕）；横屏/竖屏自适应布局切换。
+</div>
+<div class="s-effect">效果：移动端玩家获得与桌面端同等流畅的体验，PWA 支持让游戏可像原生 App 一样使用。</div>
+</div>
+
+<div class="suggestion p-low">
+<div class="s-head">
+<div class="s-title">10. 统计与数据可视化</div>
+<div class="s-priority low">低优先</div>
+</div>
+<div class="s-body">
+在图鉴或成就面板中增加游戏统计：总游玩时间、每个小游戏的平均得分分布（柱状图，Canvas 绘制）、对话选择偏好（饼图）、结局达成进度（环形图，4 种结局完成百分比）、记忆碎片收集时间线。全部使用 Canvas 2D 绘制，无需引入 Chart.js 等库。
+</div>
+<div class="s-effect">效果：为玩家提供「游戏回顾」的满足感，也是 TRAE 评审中数据可视化能力的展示。</div>
+</div>
+
+<div class="suggestion">
+<div class="s-head">
+<div class="s-title">11. 国际化支持（i18n）</div>
+<div class="s-priority medium">中优先</div>
+</div>
+<div class="s-body">
+将所有中文文本提取到统一的文本对象中（<code style="color:#d4a853">I18N.zh</code> / <code style="color:#d4a853">I18N.en</code>），支持中英文切换。对话文本、UI 标签、成就名称、知识卡片内容均需抽取。在设置面板添加语言切换按钮。英文翻译可由 AI 辅助生成后人工校对。
+</div>
+<div class="s-effect">效果：让非中文用户也能体验螺钿文化，极大扩展受众面。对 TRAE 国际评审有显著加分。</div>
+</div>
+
+<div class="suggestion">
+<div class="s-head">
+<div class="s-title">12. 键盘导航与快捷键</div>
+<div class="s-priority low">低优先</div>
+</div>
+<div class="s-body">
+添加完整的键盘操作支持：空格/回车推进对话，数字键 1-3 选择对话选项，ESC 打开设置/关闭面板，Tab 在各按钮间切换焦点（配合 ARIA focus-visible 样式），F 键切换全屏。这对无障碍访问至关重要，也是 Web 应用的最佳实践。
+</div>
+<div class="s-effect">效果：键盘用户和辅助技术用户（如屏幕阅读器）可以无障碍游玩，符合 WCAG 2.1 AA 标准。</div>
+</div>
+</div>
+
+<!-- 八、开发路线图 -->
+<div class="section" id="roadmap">
+<div class="section-title">八、开发路线图</div>
+
+<div class="roadmap">
+<div class="roadmap-item">
+<div class="roadmap-phase">第一阶段 · 1-2 周</div>
+<div class="roadmap-title">表现力提升</div>
+<div class="roadmap-desc">
+增强程序化音乐（ADSR/和弦/旋律片段）→ 角色手势与眨眼动画 → 场景时间光照系统 → 打字机标点停顿。此阶段聚焦于「让现有内容更生动」，不新增功能模块，纯粹提升视听表现力和情感传达。
+</div>
+</div>
+
+<div class="roadmap-item">
+<div class="roadmap-phase">第二阶段 · 2-3 周</div>
+<div class="roadmap-title">玩法深化</div>
+<div class="roadmap-desc">
+小游戏难度选择与回放 → 造物模式扩展（自定义纹样+PNG 下载+作品画廊）→ 对话回放与收藏 → 最佳成绩记录。此阶段让已有的玩法模块更加丰富和有深度。
+</div>
+</div>
+
+<div class="roadmap-item">
+<div class="roadmap-phase">第三阶段 · 2-3 周</div>
+<div class="roadmap-title">架构与体验优化</div>
+<div class="roadmap-desc">
+代码模块化重构（注释分隔+对象封装+CSS 变量）→ 键盘导航 → 移动端自适应优化 → PWA 支持 → 环境音效层。此阶段确保代码质量和跨平台体验。
+</div>
+</div>
+
+<div class="roadmap-item">
+<div class="roadmap-phase">第四阶段 · 1-2 周</div>
+<div class="roadmap-title">完善与参赛准备</div>
+<div class="roadmap-desc">
+国际化（中英双语）→ 统计数据可视化 → 全流程测试（覆盖所有分支和结局）→ 性能 profile（确保 60fps）→ 编写项目文档和设计说明。确保项目在提交 TRAE 时处于最佳状态。
+</div>
+</div>
+</div>
+</div>
+
+<!-- 九、竞赛加分策略 -->
+<div class="section" id="competition">
+<div class="section-title">九、TRAE 竞赛加分策略</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">🏆</span>当前项目的竞赛优势</div>
+<p>
+<strong style="color:#d4a853">文化教育价值</strong> —— 螺钿是非遗项目，游戏将五道工序融入互动体验，知识卡片+测验系统直接传递工艺知识。这是 TRAE 评审极为看重的「技术+文化」融合。
+</p>
+<p style="margin-top:.8rem">
+<strong style="color:#d4a853">技术功底</strong> —— 零依赖单文件实现完整游戏，程序化音频和图形全手绘，展示了对 Web 底层 API 的深度掌握。Canvas 离屏缓存、粒子对象池、DPR 自适应等性能优化体现工程思维。
+</p>
+<p style="margin-top:.8rem">
+<strong style="color:#d4a853">无障碍意识</strong> —— 全面的 ARIA 支持在同级别项目中极为少见，展示了对包容性设计的关注。
+</p>
+<p style="margin-top:.8rem">
+<strong style="color:#d4a853">完成度</strong> —— 16 项成就、27+ 对话分支、4 种结局、NG+ 系统、造物模式——这已经是一个内容丰富的完整游戏，而非 demo。
+</p>
+</div>
+
+<div class="card">
+<div class="card-title"><span class="icon">📝</span>建议的参赛策略</div>
+<p>
+1. <strong style="color:#d4a853">突出非遗教育线</strong> —— 在演示视频中重点展示知识卡片和测验系统，说明游戏如何让年轻人接触传统工艺。
+</p>
+<p style="margin-top:.5rem">
+2. <strong style="color:#d4a853">展示技术深度</strong> —— 录制一段「开发者视角」视频，展示程序化音乐系统、粒子引擎和离屏缓存的工作原理。
+</p>
+<p style="margin-top:.5rem">
+3. <strong style="color:#d4a853">强调零依赖</strong> —— 在 README 中明确标注「零外部依赖，&lt;100KB，即开即玩」，这是与大多数参赛项目的差异化优势。
+</p>
+<p style="margin-top:.5rem">
+4. <strong style="color:#d4a853">完善 README</strong> —— 添加项目架构图、技术栈说明、玩法截图、设计理念（为什么选择程序化音频而非音频文件）。
+</p>
+</div>
+</div>
+
+</div>
+
+<footer>
+匣中珠光 · 项目综合分析报告 v3 &nbsp;|&nbsp; 由 QoderWork 生成 &nbsp;|&nbsp; 2026.07.12
+</footer>
+
+</body>
+</html>

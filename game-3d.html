@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>嵌钿 · 沉浸 3D 模式 — 匣中珠光</title>
+<style>
+:root{
+  --bg:#0a0a0f; --gold:#d4a855; --gold-light:#f0d48a; --gold-dark:#a07830;
+  --text:#e8e4dc; --text-dim:#a09880; --teal:#5ba8a0; --border:rgba(212,168,85,.2);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;user-select:none}
+#canvas-container{position:fixed;inset:0;z-index:1}
+#canvas-container canvas{display:block;cursor:grab}
+#canvas-container canvas.grabbing{cursor:grabbing}
+
+/* === 顶部标题栏 === */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:1rem 1.4rem;background:linear-gradient(180deg,rgba(10,10,15,.85) 0%,transparent 100%);pointer-events:none}
+.topbar>*{pointer-events:auto}
+.topbar .title{font-family:"Noto Serif SC",serif;font-size:1.15rem;color:var(--gold);letter-spacing:.12em}
+.topbar .title span{display:block;font-size:.7rem;color:var(--text-dim);letter-spacing:.18em;font-weight:400;margin-top:.15rem}
+.topbar .actions{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
+
+/* === 按钮 === */
+.btn{background:rgba(20,20,28,.72);border:1px solid var(--border);color:var(--text-dim);padding:.5rem .9rem;font-size:.78rem;letter-spacing:.08em;border-radius:6px;cursor:pointer;transition:all .25s;font-family:inherit;backdrop-filter:blur(6px)}
+.btn:hover{background:rgba(40,32,18,.85);border-color:var(--gold);color:var(--gold-light);box-shadow:0 0 14px rgba(212,168,85,.18)}
+.btn.active{background:rgba(80,56,20,.85);border-color:var(--gold);color:var(--gold-light)}
+.btn-primary{background:linear-gradient(135deg,rgba(212,168,85,.25),rgba(160,120,48,.18));border-color:var(--gold);color:var(--gold-light)}
+.btn-primary:hover{background:linear-gradient(135deg,rgba(212,168,85,.4),rgba(160,120,48,.28));box-shadow:0 0 18px rgba(212,168,85,.3)}
+
+/* === 底部提示 === */
+.hint-bar{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:10;background:rgba(20,20,28,.78);border:1px solid var(--border);border-radius:10px;padding:.7rem 1.3rem;max-width:min(92vw,640px);text-align:center;backdrop-filter:blur(8px);transition:opacity .3s}
+.hint-bar .progress{font-size:.72rem;color:var(--text-dim);letter-spacing:.14em;margin-bottom:.35rem}
+.hint-bar .progress b{color:var(--gold);font-weight:600}
+.hint-bar .text{font-size:.85rem;color:var(--text);line-height:1.6}
+.hint-bar .text .key{display:inline-block;padding:.05rem .4rem;margin:0 .15rem;border:1px solid var(--border);border-radius:4px;color:var(--gold-light);font-size:.78rem;background:rgba(212,168,85,.06)}
+
+/* === 左下模式提示 === */
+.mode-tag{position:fixed;bottom:1.2rem;left:1.4rem;z-index:10;display:flex;flex-direction:column;gap:.4rem}
+
+/* === 加载页 === */
+#loader{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s}
+#loader.hidden{opacity:0;pointer-events:none}
+#loader .ring{width:54px;height:54px;border:2px solid rgba(212,168,85,.15);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite}
+#loader .ltxt{margin-top:1.2rem;color:var(--text-dim);font-size:.82rem;letter-spacing:.2em}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* === 评分面板 === */
+#score-panel{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(5,5,10,.78);backdrop-filter:blur(10px)}
+#score-panel.show{display:flex;animation:fadeIn .5s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.score-card{background:linear-gradient(160deg,rgba(26,26,38,.96),rgba(14,14,20,.96));border:1px solid var(--border);border-radius:18px;padding:2.4rem 2.8rem;text-align:center;max-width:90vw;box-shadow:0 0 60px rgba(212,168,85,.12);position:relative;overflow:hidden}
+.score-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.score-card .label{font-size:.72rem;letter-spacing:.25em;color:var(--gold-dark);text-transform:uppercase;margin-bottom:.6rem}
+.score-card h2{font-family:"Noto Serif SC",serif;font-size:1.8rem;color:var(--gold);margin-bottom:1rem;letter-spacing:.06em}
+.score-card .stars{font-size:2.6rem;letter-spacing:.15em;margin-bottom:1.2rem;filter:drop-shadow(0 0 12px rgba(212,168,85,.4))}
+.score-card .stars .on{color:var(--gold-light)}
+.score-card .stars .off{color:rgba(212,168,85,.18)}
+.score-card .stats{display:flex;gap:1.6rem;justify-content:center;margin-bottom:1.6rem;flex-wrap:wrap}
+.score-card .stat{text-align:center}
+.score-card .stat .v{font-size:1.3rem;color:var(--gold-light);font-weight:600;font-family:"Noto Serif SC",serif}
+.score-card .stat .k{font-size:.7rem;color:var(--text-dim);letter-spacing:.14em;margin-top:.2rem}
+.score-card .actions{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap}
+
+/* === 开场遮罩 === */
+#intro-overlay{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,5,10,.6);backdrop-filter:blur(4px);transition:opacity .5s;text-align:center;padding:2rem}
+#intro-overlay.hidden{opacity:0;pointer-events:none}
+#intro-overlay h1{font-family:"Noto Serif SC",serif;font-size:clamp(1.8rem,4vw,2.8rem);color:var(--gold);letter-spacing:.1em;margin-bottom:.6rem;text-shadow:0 0 40px rgba(212,168,85,.3)}
+#intro-overlay p{color:var(--text-dim);max-width:560px;line-height:2;font-size:.92rem;margin-bottom:1.8rem}
+#intro-overlay .steps{display:flex;gap:1.4rem;margin-bottom:2rem;flex-wrap:wrap;justify-content:center}
+#intro-overlay .step{display:flex;flex-direction:column;align-items:center;gap:.3rem;max-width:140px}
+#intro-overlay .step .ic{width:42px;height:42px;border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:1.1rem}
+#intro-overlay .step .tx{font-size:.74rem;color:var(--text-dim);line-height:1.5}
+
+@media(max-width:640px){
+  .topbar{padding:.7rem .8rem}
+  .topbar .title{font-size:.95rem}
+  .btn{padding:.42rem .65rem;font-size:.72rem}
+  .hint-bar{bottom:.7rem;padding:.55rem .9rem}
+  .hint-bar .text{font-size:.78rem}
+  .mode-tag{bottom:.7rem;left:.7rem}
+  .score-card{padding:1.8rem 1.4rem}
+  #intro-overlay .steps{gap:.9rem}
+}
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<div class="topbar">
+  <div class="title">嵌钿 · 沉浸 3D<span>INLAY — IMMERSE MODE</span></div>
+  <div class="actions">
+    <button class="btn" id="btn-quality">画质：高</button>
+    <button class="btn" id="btn-reset">重置</button>
+    <a class="btn" href="index.html">返回主菜单</a>
+  </div>
+</div>
+
+<div class="mode-tag">
+  <button class="btn active" id="btn-move">移动模式</button>
+  <button class="btn" id="btn-rotate">旋转模式</button>
+</div>
+
+<div class="hint-bar" id="hint-bar">
+  <div class="progress">已镶嵌 <b id="prog">0</b> / <b id="total">5</b></div>
+  <div class="text" id="hint-text">点击托盘中的贝壳片拾取，拖动至漆面凹槽处松手即可镶嵌</div>
+</div>
+
+<div id="intro-overlay">
+  <h1>嵌钿 · 精密拼合</h1>
+  <p>将精挑细选的贝壳片嵌入漆面凹槽，让它们永远绽放光芒。在三维空间中调整位置与角度，靠近凹槽时会自动磁吸就位。</p>
+  <div class="steps">
+    <div class="step"><div class="ic">①</div><div class="tx">点击托盘贝壳片拾取</div></div>
+    <div class="step"><div class="ic">⇆</div><div class="tx">移动模式拖动至凹槽</div></div>
+    <div class="step"><div class="ic">↻</div><div class="tx">旋转模式对准角度</div></div>
+    <div class="step"><div class="ic">✦</div><div class="tx">磁吸就位，欣赏虹彩</div></div>
+  </div>
+  <button class="btn btn-primary" id="btn-start" style="padding:.7rem 2rem;font-size:.9rem">开始镶嵌</button>
+</div>
+
+<div id="loader"><div class="ring"></div><div class="ltxt">加载三维场景…</div></div>
+
+<!-- 3D 加载错误提示层：file:// 协议或 Three.js 加载失败时显示 -->
+<div id="c3-error" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9999;max-width:90vw;padding:1.2rem 1.6rem;background:rgba(40,15,8,.96);border:1px solid rgba(232,138,90,.55);border-radius:8px;color:#e88a5a;font-size:.88rem;line-height:1.7;display:none;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+  <div style="font-size:1rem;margin-bottom:.6rem;color:#ffb070">⚠ 3D 模型加载失败</div>
+  <div id="c3-error-msg"></div>
+  <div style="margin-top:.8rem;font-size:.78rem;color:#a89070">请使用 start.bat 启动本地服务器后访问 http://127.0.0.1:8765/game-3d.html</div>
+</div>
+<script>
+/* 检测 file:// 协议：GLB 模型在 file:// 下无法加载（CORS 限制） */
+(function(){
+  if(location.protocol === 'file:'){
+    var box = document.getElementById('c3-error');
+    var msg = document.getElementById('c3-error-msg');
+    var loader = document.getElementById('loader');
+    if(msg) msg.textContent = '检测到你正在使用 file:// 协议直接打开文件。3D 模型（GLB）无法在 file:// 协议下加载。';
+    if(box) box.style.display = 'block';
+    if(loader) loader.style.display = 'none';
+  }
+})();
+/* 检测 Three.js 是否加载成功：15秒后若 canvas-container 内无 canvas 则报错 */
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    var cc = document.getElementById('canvas-container');
+    if(!cc || cc.children.length === 0){
+      var box = document.getElementById('c3-error');
+      var msg = document.getElementById('c3-error-msg');
+      var loader = document.getElementById('loader');
+      if(msg) msg.textContent = 'Three.js 模块加载失败，请检查 vendor/three/ 目录是否完整，或使用 start.bat 启动本地服务器。';
+      if(box) box.style.display = 'block';
+      if(loader) loader.style.display = 'none';
+      console.error('[3D] Three.js 模块未加载，canvas-container 内无 canvas');
+    }
+  }, 15000);
+});
+</script>
+
+<div id="score-panel">
+  <div class="score-card">
+    <div class="label">CRAFTSMANSHIP</div>
+    <h2>镶嵌完成</h2>
+    <div class="stars" id="stars"></div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="s-time">—</div><div class="k">用时</div></div>
+      <div class="stat"><div class="v" id="s-miss">—</div><div class="k">偏差次数</div></div>
+      <div class="stat"><div class="v" id="s-pieces">5</div><div class="k">贝壳片</div></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-replay">再玩一次</button>
+      <a class="btn" href="index.html">返回主菜单</a>
+    </div>
+  </div>
+</div>
+
+<!-- 老匠人 3D 模型数据（base64 内嵌，约100MB，默认禁用以提升加载速度；如需file://直接打开请取消注释） -->
+<!-- <script src="assets/old-craftsman-data.js"></script> -->
+<!-- import map：使用本地 Three.js 0.160，避免 CDN 不稳定导致3D模型无法加载 -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+/* ============ 全局状态 ============ */
+let scene, camera, renderer, orbit, clock;
+let raycaster, pointer, movePlane;
+let baseboard, pieces=[], selectables=[], targets=[], grooves=[], outlines=[];
+let selected=null, mode='move', placedCount=0;
+let isDragging=false, dragStartX=0, pieceStartRotY=0;
+let cameraAnim=null, tweens=[];
+let state='intro';            // intro | playing | microview | reveal | done
+let microT=0, revealT=0;
+let missCount=0, startTime=0;
+let quality='high';
+let audioCtx=null;
+let selectionRing=null;
+let spot=null;   /* 模块级引用，供画质切换时调整阴影 */
+let craftsman=null;   /* 老匠人 3D 模型 */
+let craftsmanRoot=null;  /* 待机动画用的根容器（用于摇摆） */
+let _loaderHidden=false;
+function hideLoader(){
+  if(_loaderHidden) return;
+  _loaderHidden=true;
+  document.getElementById('loader').classList.add('hidden');
+}
+
+const BASE_TOP_Y = 0.2;
+const PIECE_Y = 0.28;
+
+/* 关卡布局：5 片贝壳组成花形纹样（增加品种与虹彩颜色） */
+const LAYOUT = [
+  {shape:'droplet', pos:{x:0, z:0},     rot:0,           color:0xfff4e0, hue:'white'},
+  {shape:'petal',   pos:{x:1.4, z:0},   rot:-Math.PI/2,  color:0xffe0c0, hue:'pink'},
+  {shape:'petal',   pos:{x:-1.4, z:0},  rot:Math.PI/2,   color:0xffd8a8, hue:'peach'},
+  {shape:'leaf',    pos:{x:0, z:1.15},  rot:Math.PI,     color:0xe8f0ff, hue:'blue'},
+  {shape:'leaf',    pos:{x:0, z:-1.15}, rot:0,           color:0xf0e8ff, hue:'purple'}
+];
+const TRAY = [
+  {x:-2.6, z:2.7}, {x:-1.3, z:2.95}, {x:0, z:2.7}, {x:1.3, z:2.95}, {x:2.6, z:2.7}
+];
+
+/* 虹彩颜色调色板（珍珠母贝的不同品种） */
+const IRIDESCENCE_PRESETS = {
+  white:  { thick:[150, 500], ior:1.72, env:2.0, color:0xfff8ec },
+  pink:   { thick:[180, 550], ior:1.78, env:2.2, color:0xffe8d8 },
+  peach:  { thick:[160, 520], ior:1.75, env:2.1, color:0xfff0dc },
+  blue:   { thick:[200, 580], ior:1.82, env:2.3, color:0xe8f0ff },
+  purple: { thick:[220, 600], ior:1.85, env:2.2, color:0xf0e8ff }
+};
+
+/* ============ 形状生成 ============ */
+function makeShape(type){
+  const s = new THREE.Shape();
+  switch(type){
+    case 'petal':
+      s.moveTo(0,0);
+      s.bezierCurveTo(0.42,0.12, 0.42,0.88, 0,1);
+      s.bezierCurveTo(-0.42,0.88, -0.42,0.12, 0,0);
+      break;
+    case 'leaf':
+      s.moveTo(0,-0.65);
+      s.bezierCurveTo(0.6,-0.2, 0.6,0.35, 0,0.68);
+      s.bezierCurveTo(-0.6,0.35, -0.6,-0.2, 0,-0.65);
+      break;
+    case 'droplet':
+      s.moveTo(0,-0.78);
+      s.bezierCurveTo(0.62,-0.18, 0.62,0.5, 0,0.78);
+      s.bezierCurveTo(-0.62,0.5, -0.62,-0.18, 0,-0.78);
+      break;
+    default:
+      s.moveTo(0,-0.6);
+      s.bezierCurveTo(0.5,-0.25, 0.5,0.3, 0,0.6);
+      s.bezierCurveTo(-0.5,0.3, -0.5,-0.25, 0,-0.6);
+  }
+  return s;
+}
+
+/* 创建精致螺钿贝壳片（多层结构：虹彩表层 + 珍珠母底层 + 边缘金边） */
+function makeShellPiece(cfg){
+  const group = new THREE.Group();
+  const shape = makeShape(cfg.shape);
+  const preset = IRIDESCENCE_PRESETS[cfg.hue] || IRIDESCENCE_PRESETS.white;
+
+  /* 底层：珍珠母贝主体 */
+  const baseGeo = new THREE.ExtrudeGeometry(shape, {
+    depth:0.1, bevelEnabled:true, bevelThickness:0.015, bevelSize:0.015, bevelSegments:3
+  });
+  baseGeo.rotateX(-Math.PI/2);
+  baseGeo.center();
+  baseGeo.computeVertexNormals();
+  const baseMat = new THREE.MeshPhysicalMaterial({
+    color: preset.color,
+    metalness:0.2,
+    roughness:0.15,
+    clearcoat:1,
+    clearcoatRoughness:0.06,
+    iridescence:1,
+    iridescenceIOR: preset.ior,
+    iridescenceThicknessRange: preset.thick,
+    envMapIntensity: preset.env,
+    side:THREE.DoubleSide
+  });
+  const base = new THREE.Mesh(baseGeo, baseMat);
+  base.castShadow = true;
+  base.receiveShadow = true;
+  group.add(base);
+
+  /* 中层：高虹彩薄膜（增强视角变色效果） */
+  const topGeo = new THREE.ExtrudeGeometry(shape, {
+    depth:0.02, bevelEnabled:true, bevelThickness:0.008, bevelSize:0.008, bevelSegments:2
+  });
+  topGeo.rotateX(-Math.PI/2);
+  topGeo.center();
+  const topMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    transparent:true,
+    opacity:0.5,
+    roughness:0.03,
+    metalness:0,
+    clearcoat:1,
+    clearcoatRoughness:0.02,
+    iridescence:1,
+    iridescenceIOR: preset.ior + 0.2,
+    iridescenceThicknessRange: [preset.thick[0]*0.5, preset.thick[1]*0.7],
+    envMapIntensity: preset.env * 1.5,
+    side:THREE.DoubleSide
+  });
+  const top = new THREE.Mesh(topGeo, topMat);
+  top.position.y = 0.055;
+  group.add(top);
+
+  /* 边缘金线（螺钿工艺的金丝包边） */
+  const edges = new THREE.EdgesGeometry(baseGeo, 1);
+  const goldMat = new THREE.LineBasicMaterial({
+    color: 0xd4a855,
+    transparent:true,
+    opacity:0.45
+  });
+  const goldEdge = new THREE.LineSegments(edges, goldMat);
+  group.add(goldEdge);
+
+  /* 背面：深色基底（模拟贝壳背面的角质层） */
+  const backGeo = new THREE.ExtrudeGeometry(shape, {
+    depth:0.01, bevelEnabled:false
+  });
+  backGeo.rotateX(-Math.PI/2);
+  backGeo.center();
+  const backMat = new THREE.MeshStandardMaterial({
+    color: 0x3a2818,
+    roughness:0.9,
+    metalness:0.05
+  });
+  const back = new THREE.Mesh(backGeo, backMat);
+  back.position.y = -0.056;
+  group.add(back);
+
+  group.userData = {baseColor: cfg.color, target:null, placed:false, baseMesh: base, topMesh: top, goldEdge: goldEdge};
+  return group;
+}
+
+/* ============ 初始化 ============ */
+function init(){
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a0f);
+  scene.fog = new THREE.Fog(0x0a0a0f, 11, 24);
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+  camera.position.set(0, 8, 6);
+
+  renderer = new THREE.WebGLRenderer({antialias: quality==='high', powerPreference:'high-performance'});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality==='high'?1.5:1));
+  renderer.shadowMap.enabled = quality==='high';
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+  /* 环境反射：为虹彩与漆面提供柔和反射 */
+  try{
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  }catch(e){ console.warn('环境贴图生成失败', e); }
+
+  /* 光照 */
+  scene.add(new THREE.AmbientLight(0xfff0d0, 0.35));
+  scene.add(new THREE.HemisphereLight(0xfff5e0, 0x140c06, 0.45));
+  spot = new THREE.SpotLight(0xfff0e0, 42, 26, Math.PI/4.5, 0.45, 1.2);
+  spot.position.set(4.5, 9.5, 5);
+  spot.castShadow = quality==='high';
+  spot.shadow.mapSize.set(1024,1024);
+  spot.shadow.camera.near = 1;
+  spot.shadow.camera.far = 26;
+  spot.shadow.bias = -0.0005;
+  scene.add(spot); scene.add(spot.target);
+  const fill = new THREE.DirectionalLight(0x6a8aaa, 0.35);
+  fill.position.set(-5, 4, -3);
+  scene.add(fill);
+
+  /* 桌面 */
+  const table = new THREE.Mesh(
+    new THREE.BoxGeometry(15, 0.3, 13),
+    new THREE.MeshStandardMaterial({color:0x1a1208, roughness:0.85, metalness:0.1})
+  );
+  table.position.y = -0.25;
+  table.receiveShadow = true;
+  scene.add(table);
+
+  /* 漆面底板 */
+  baseboard = new THREE.Mesh(
+    new THREE.BoxGeometry(6, 0.4, 4),
+    new THREE.MeshPhysicalMaterial({color:0x050505, roughness:0.12, metalness:0.0, clearcoat:1, clearcoatRoughness:0.08, reflectivity:0.6})
+  );
+  baseboard.position.y = 0;
+  baseboard.receiveShadow = true; baseboard.castShadow = true;
+  scene.add(baseboard);
+
+  /* 金边 */
+  const trim = new THREE.Mesh(
+    new THREE.BoxGeometry(6.12, 0.05, 4.12),
+    new THREE.MeshStandardMaterial({color:0xd4a855, metalness:0.9, roughness:0.25, emissive:0x3a2a10, emissiveIntensity:0.3})
+  );
+  trim.position.y = 0.205;
+  scene.add(trim);
+
+  /* 相机控制 */
+  orbit = new OrbitControls(camera, renderer.domElement);
+  orbit.enableDamping = true;
+  orbit.dampingFactor = 0.08;
+  orbit.minDistance = 3.5;
+  orbit.maxDistance = 13;
+  orbit.minPolarAngle = 0.15;
+  orbit.maxPolarAngle = 1.45;
+  orbit.target.set(0, 0, 0);
+  orbit.enablePan = false;
+
+  raycaster = new THREE.Raycaster();
+  pointer = new THREE.Vector2();
+  movePlane = new THREE.Plane(new THREE.Vector3(0,1,0), -PIECE_Y);
+
+  clock = new THREE.Clock();
+
+  /* 选择光环 */
+  selectionRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.55, 0.62, 48),
+    new THREE.MeshBasicMaterial({color:0xd4a855, transparent:true, opacity:0.7, side:THREE.DoubleSide})
+  );
+  selectionRing.rotation.x = -Math.PI/2;
+  selectionRing.visible = false;
+  scene.add(selectionRing);
+
+  buildLevel();
+  loadCraftsman();
+  loadAlian();
+  addSceneDecor();
+  setupUI();
+  setupInput();
+
+  /* 开场镜头：从高处缓缓下降 */
+  startCameraAnim(
+    new THREE.Vector3(0, 8, 6),
+    new THREE.Vector3(0, 4.2, 5.5),
+    new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0),
+    1.8, ()=>{}
+  );
+
+  animate();
+}
+
+/* ============ 关卡构建 ============ */
+function buildLevel(){
+  LAYOUT.forEach((cfg, i)=>{
+    /* 凹槽（深色凹陷） */
+    const tShape = makeShape(cfg.shape);
+    const tGeo = new THREE.ExtrudeGeometry(tShape, {depth:0.05, bevelEnabled:false});
+    tGeo.rotateX(-Math.PI/2);
+    tGeo.center();
+    const groove = new THREE.Mesh(
+      tGeo,
+      new THREE.MeshStandardMaterial({color:0x070707, roughness:0.2, metalness:0.6})
+    );
+    groove.position.set(cfg.pos.x, BASE_TOP_Y - 0.025, cfg.pos.z);
+    groove.rotation.y = cfg.rot;
+    groove.receiveShadow = true;
+    scene.add(groove);
+    grooves.push(groove);
+
+    /* 金色轮廓 */
+    const edges = new THREE.EdgesGeometry(tGeo);
+    const outline = new THREE.LineSegments(
+      edges,
+      new THREE.LineBasicMaterial({color:0xd4a855, transparent:true, opacity:0.55})
+    );
+    outline.position.copy(groove.position);
+    outline.rotation.y = cfg.rot;
+    scene.add(outline);
+    outlines.push(outline);
+
+    const target = {
+      pos: new THREE.Vector3(cfg.pos.x, PIECE_Y, cfg.pos.z),
+      rot: cfg.rot,
+      outline: outline,
+      groove: groove
+    };
+    targets.push(target);
+
+    /* 精致螺钿贝壳片（多层结构） */
+    const piece = makeShellPiece(cfg);
+    const tp = TRAY[i];
+    piece.position.set(tp.x, PIECE_Y, tp.z);
+    piece.rotation.y = 0;
+    piece.userData.target = target;
+    piece.userData.placed = false;
+    piece.userData.index = i;
+    /* 启用阴影（遍历 group 内所有 mesh） */
+    piece.traverse((o)=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+    scene.add(piece);
+    pieces.push(piece);
+    selectables.push(piece);
+  });
+
+  document.getElementById('total').textContent = pieces.length;
+  updateProgress();
+}
+
+function clearLevel(){
+  pieces.forEach(p=>scene.remove(p));
+  grooves.forEach(g=>scene.remove(g));
+  outlines.forEach(o=>scene.remove(o));
+  pieces=[]; selectables=[]; targets=[]; grooves=[]; outlines=[];
+  placedCount=0; missCount=0; selected=null; tweens=[];
+  if(selectionRing) selectionRing.visible=false;
+}
+
+/* ============ 老匠人模型加载（base64 内嵌，支持 file://） ============ */
+function loadCraftsman(){
+  /* 若已加载则跳过（重置时不重复加载） */
+  if(craftsman) return;
+
+  var _loadTimeout = setTimeout(function(){
+    if(!craftsman){
+      console.warn('[game-3d] 老匠人模型加载超时(60s)，使用占位角色');
+      const lt = document.querySelector('#loader .ltxt');
+      if(lt) lt.textContent = '模型加载超时，使用占位角色';
+      createPlaceholderCraftsman();
+      hideLoader();
+    }
+  }, 60000);
+
+  function onLoad(gltf){
+    clearTimeout(_loadTimeout);
+    craftsman = gltf.scene;
+    /* 计算包围盒，缩放至合理身高（1.7 单位）并居中至脚底 */
+    const box = new THREE.Box3().setFromObject(craftsman);
+    const size = box.getSize(new THREE.Vector3());
+    const targetH = 1.7;
+    const scale = targetH / size.y;
+    craftsman.scale.setScalar(scale);
+    /* 重新计算缩放后的包围盒以居中 X 并贴地 */
+    const box2 = new THREE.Box3().setFromObject(craftsman);
+    const size2 = box2.getSize(new THREE.Vector3());
+    const center = box2.getCenter(new THREE.Vector3());
+    craftsman.position.x -= center.x;
+    craftsman.position.y -= box2.min.y;
+    craftsman.position.z -= center.z;
+    /* 用容器包裹以便做待机摇摆动画（不污染模型自身变换） */
+    craftsmanRoot = new THREE.Group();
+    craftsmanRoot.add(craftsman);
+    /* 定位至工作台后方偏左，面向玩家（+Z 方向） */
+    craftsmanRoot.position.set(-1.6, 0, -2.8);
+    craftsmanRoot.rotation.y = Math.PI * 0.12;
+    scene.add(craftsmanRoot);
+    /* 遍历启用阴影 */
+    craftsman.traverse((o)=>{
+      if(o.isMesh){
+        o.castShadow = quality==='high';
+        o.receiveShadow = true;
+        /* 确保材质受环境光照影响 */
+        if(o.material){
+          o.material.envMapIntensity = 0.8;
+          if(o.material.map) o.material.map.colorSpace = THREE.SRGBColorSpace;
+        }
+      }
+    });
+    /* 模型无内置动画，在 animate 中用代码做呼吸摇摆 */
+    console.log('老匠人模型加载完成, 原始尺寸:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2), '缩放:', scale.toFixed(3));
+    hideLoader();
+  }
+
+  function onError(err){
+    clearTimeout(_loadTimeout);
+    console.error('老匠人模型加载失败:', err);
+    const lt = document.querySelector('#loader .ltxt');
+    if(lt) lt.textContent = '模型加载失败，使用占位角色';
+    /* 降级：简易占位人形 */
+    createPlaceholderCraftsman();
+    hideLoader();
+  }
+
+  /* 优先使用 base64 内嵌数据（支持 file:// 直接打开） */
+  if(window._OLD_CRAFTSMAN_GLB_BASE64){
+    try{
+      const bin = atob(window._OLD_CRAFTSMAN_GLB_BASE64);
+      const bytes = new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+      const loader = new GLTFLoader();
+      loader.parse(bytes.buffer, '', onLoad, onError);
+    }catch(e){ onError(e); }
+  }else{
+    /* 降级：网络加载（需服务器环境） */
+    const loader = new GLTFLoader();
+    loader.load('assets/old-craftsman.glb', onLoad, undefined, onError);
+  }
+}
+
+/* 降级占位：模型加载失败时用基本几何体搭建简易人形 */
+function createPlaceholderCraftsman(){
+  craftsmanRoot = new THREE.Group();
+  const skin = new THREE.MeshStandardMaterial({color:0xc9a878, roughness:0.7});
+  const cloth = new THREE.MeshStandardMaterial({color:0x4a3020, roughness:0.85});
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.34,0.9,12), cloth);
+  body.position.y = 0.85; body.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2,16,16), skin);
+  head.position.y = 1.5; head.castShadow = true;
+  craftsmanRoot.add(body, head);
+  craftsmanRoot.position.set(-1.6, 0, -2.8);
+  craftsmanRoot.rotation.y = Math.PI * 0.12;
+  scene.add(craftsmanRoot);
+  craftsman = craftsmanRoot;
+}
+
+/* ============ 阿莲模型加载（沉浸3D模式中作为旁立角色） ============ */
+let alianModel = null;
+let alianRoot = null;
+let alianLoaded = false;
+
+function loadAlian(){
+  if(alianModel) return;
+
+  function onLoad(gltf){
+    clearTimeout(_loadTimeout);
+    alianModel = gltf.scene;
+    const box = new THREE.Box3().setFromObject(alianModel);
+    const size = box.getSize(new THREE.Vector3());
+    const targetH = 1.6;
+    const scale = targetH / size.y;
+    alianModel.scale.setScalar(scale);
+    const box2 = new THREE.Box3().setFromObject(alianModel);
+    const center = box2.getCenter(new THREE.Vector3());
+    alianModel.position.x -= center.x;
+    alianModel.position.y -= box2.min.y;
+    alianModel.position.z -= center.z;
+    alianRoot = new THREE.Group();
+    alianRoot.add(alianModel);
+    /* 定位至工作台后方偏右，面向工作台（-Z 方向，略向左看老匠人） */
+    alianRoot.position.set(1.8, 0, -2.6);
+    alianRoot.rotation.y = -Math.PI * 0.18;
+    scene.add(alianRoot);
+    alianModel.traverse((o)=>{
+      if(o.isMesh){
+        o.castShadow = quality==='high';
+        o.receiveShadow = true;
+        if(o.material){
+          o.material.envMapIntensity = 0.9;
+          if(o.material.map) o.material.map.colorSpace = THREE.SRGBColorSpace;
+        }
+      }
+    });
+    alianLoaded = true;
+    console.log('[game-3d] 阿莲模型加载完成, 原始尺寸:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2), '缩放:', scale.toFixed(3));
+  }
+
+  function onError(err){
+    clearTimeout(_loadTimeout);
+    console.warn('[game-3d] 阿莲模型加载失败，将不显示:', err);
+  }
+
+  /* 超时保护：60秒（70MB大文件需要更长时间） */
+  var _loadTimeout = setTimeout(function(){
+    if(!alianLoaded){
+      console.warn('[game-3d] 阿莲模型加载超时(60s)，将不显示');
+    }
+  }, 60000);
+
+  /* 本地服务器加载（file:// 不支持 fetch 时降级为不显示） */
+  const loader = new GLTFLoader();
+  loader.load('assets/alian.glb', onLoad, undefined, onError);
+}
+
+/* ============ 场景装饰美化 ============ */
+let decorGroup = null;
+
+function addSceneDecor(){
+  decorGroup = new THREE.Group();
+
+  /* 精致托盘（放置贝壳片的工作台装饰） */
+  const trayMat = new THREE.MeshPhysicalMaterial({
+    color: 0x2a1a10,
+    roughness: 0.4,
+    metalness: 0.1,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.2
+  });
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(6, 0.08, 0.9), trayMat);
+  tray.position.set(0, 0.26, 2.8);
+  tray.receiveShadow = true;
+  tray.castShadow = true;
+  decorGroup.add(tray);
+
+  /* 托盘金边 */
+  const trayTrimMat = new THREE.MeshStandardMaterial({
+    color: 0xd4a855,
+    metalness: 0.9,
+    roughness: 0.3,
+    emissive: 0x2a1a08,
+    emissiveIntensity: 0.25
+  });
+  const trayTrim = new THREE.Mesh(new THREE.BoxGeometry(6.08, 0.03, 0.98), trayTrimMat);
+  trayTrim.position.set(0, 0.305, 2.8);
+  decorGroup.add(trayTrim);
+
+  /* 贝壳托盘上的绒布垫 */
+  const velvetMat = new THREE.MeshStandardMaterial({
+    color: 0x3a1a20,
+    roughness: 0.95,
+    metalness: 0
+  });
+  const velvet = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.02, 0.75), velvetMat);
+  velvet.position.set(0, 0.32, 2.8);
+  decorGroup.add(velvet);
+
+  /* 左侧小灯笼 */
+  const lanternGeo = new THREE.SphereGeometry(0.22, 16, 16);
+  const lanternMat = new THREE.MeshStandardMaterial({
+    color: 0x8b2500,
+    emissive: 0xff6633,
+    emissiveIntensity: 0.4,
+    roughness: 0.6,
+    metalness: 0.1
+  });
+  const lantern = new THREE.Mesh(lanternGeo, lanternMat);
+  lantern.position.set(-3.5, 3.2, -2.5);
+  lantern.castShadow = true;
+  decorGroup.add(lantern);
+
+  /* 灯笼挂绳 */
+  const ropeMat = new THREE.MeshStandardMaterial({color: 0x3a2010, roughness:0.9});
+  const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.2, 6), ropeMat);
+  rope.position.set(-3.5, 3.9, -2.5);
+  decorGroup.add(rope);
+
+  /* 灯笼暖色点光 */
+  const lanternLight = new THREE.PointLight(0xff8844, 8, 6, 2);
+  lanternLight.position.set(-3.5, 3.2, -2.5);
+  decorGroup.add(lanternLight);
+
+  /* 桌面上散落的小贝壳（装饰用，不可交互） */
+  for(let i=0; i<8; i++){
+    const s = 0.08 + Math.random()*0.12;
+    const geo = new THREE.SphereGeometry(s, 8, 8);
+    const colors = [0xfff0d0, 0xffe0c0, 0xf0e8d0, 0xe8d8f0, 0xf0d8d8];
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: colors[Math.floor(Math.random()*colors.length)],
+      roughness: 0.15,
+      metalness: 0.1,
+      clearcoat: 1,
+      clearcoatRoughness: 0.1,
+      iridescence: 0.8,
+      iridescenceIOR: 1.65,
+      iridescenceThicknessRange: [200, 500],
+      envMapIntensity: 1.2
+    });
+    const shell = new THREE.Mesh(geo, mat);
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 2.2 + Math.random() * 0.8;
+    shell.position.set(
+      Math.cos(angle) * dist,
+      0.23 + s * 0.5,
+      -0.5 + Math.sin(angle) * dist * 0.6
+    );
+    shell.rotation.set(Math.random()*0.5, Math.random()*Math.PI, Math.random()*0.3);
+    shell.castShadow = true;
+    decorGroup.add(shell);
+  }
+
+  scene.add(decorGroup);
+}
+
+/* ============ 交互 ============ */
+function setupInput(){
+  const dom = renderer.domElement;
+  dom.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('resize', onResize);
+}
+
+function setPointer(e){
+  pointer.set((e.clientX/window.innerWidth)*2-1, -(e.clientY/window.innerHeight)*2+1);
+}
+
+function onPointerDown(e){
+  if(state!=='playing') return;
+  setPointer(e);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(selectables, true);
+  if(hits.length>0){
+    /* 找到所属的贝壳片 group（向上遍历直到找到 selectables 中的对象） */
+    let hitObj = hits[0].object;
+    while(hitObj && selectables.indexOf(hitObj) < 0){ hitObj = hitObj.parent; }
+    selectPiece(hitObj || hits[0].object);
+    orbit.enabled = false;
+    isDragging = true;
+    dragStartX = e.clientX;
+    pieceStartRotY = selected.rotation.y;
+    renderer.domElement.classList.add('grabbing');
+    if(mode==='move'){
+      selected.position.y = PIECE_Y + 0.18;
+    }
+  }else{
+    deselect();
+  }
+}
+
+function onPointerMove(e){
+  if(!isDragging || !selected) return;
+  if(mode==='move'){
+    setPointer(e);
+    raycaster.setFromCamera(pointer, camera);
+    const hit = new THREE.Vector3();
+    if(raycaster.ray.intersectPlane(movePlane, hit)){
+      selected.position.x = THREE.MathUtils.clamp(hit.x, -2.9, 2.9);
+      selected.position.z = THREE.MathUtils.clamp(hit.z, -1.9, 3.0);
+    }
+  }else if(mode==='rotate'){
+    const dx = e.clientX - dragStartX;
+    selected.rotation.y = pieceStartRotY + dx * 0.016;
+  }
+  updateSelectionRing();
+}
+
+function onPointerUp(){
+  if(!isDragging || !selected) return;
+  isDragging = false;
+  orbit.enabled = true;
+  renderer.domElement.classList.remove('grabbing');
+  if(mode==='move'){
+    selected.position.y = PIECE_Y;
+  }
+  checkSnap(selected);
+}
+
+function selectPiece(p){
+  if(selected && selected!==p) restoreEmissive(selected);
+  selected = p;
+  /* 选中高亮：遍历 group 内所有 mesh 设置发光 */
+  p.traverse((o)=>{
+    if(o.isMesh && o.material && o.material.emissive){
+      o.userData._origEmissive = o.material.emissive.getHex();
+      o.userData._origEmissiveIntensity = o.material.emissiveIntensity;
+      o.material.emissive = new THREE.Color(0x6a5020);
+      o.material.emissiveIntensity = 0.6;
+    }
+  });
+  selectionRing.visible = true;
+  updateSelectionRing();
+  setHint('当前：'+(mode==='move'?'移动模式 — 拖动贝壳至凹槽':'旋转模式 — 左右拖动调整角度')+'（靠近凹槽会自动吸附）');
+}
+
+function deselect(){
+  if(selected) restoreEmissive(selected);
+  selected = null;
+  selectionRing.visible = false;
+  setHint(defaultHint());
+}
+
+function restoreEmissive(p){
+  p.traverse((o)=>{
+    if(o.isMesh && o.material && o.material.emissive){
+      if(o.userData._origEmissive !== undefined){
+        o.material.emissive.setHex(o.userData._origEmissive);
+        o.material.emissiveIntensity = o.userData._origEmissiveIntensity;
+      } else {
+        o.material.emissive.setHex(0x000000);
+        o.material.emissiveIntensity = 0;
+      }
+    }
+  });
+}
+
+function updateSelectionRing(){
+  if(!selected || !selectionRing.visible) return;
+  selectionRing.position.set(selected.position.x, BASE_TOP_Y + 0.01, selected.position.z);
+  const pulse = 1 + Math.sin(performance.now()*0.006)*0.04;
+  selectionRing.scale.set(pulse, pulse, pulse);
+}
+
+/* ============ 磁吸判定 ============ */
+function checkSnap(piece){
+  if(piece.userData.placed) return;
+  const t = piece.userData.target;
+  const dx = piece.position.x - t.pos.x;
+  const dz = piece.position.z - t.pos.z;
+  const distXZ = Math.sqrt(dx*dx + dz*dz);
+  let dRot = piece.rotation.y - t.rot;
+  dRot = Math.atan2(Math.sin(dRot), Math.cos(dRot));
+  const angleDeg = Math.abs(dRot) * 180 / Math.PI;
+
+  if(distXZ < 0.3 && angleDeg < 16){
+    snapPiece(piece, t);
+  }else{
+    missCount++;
+    flashOutline(t, 0xe07070);
+    setHint('角度或位置偏差较大，再试试看（旋转模式可调整角度）');
+  }
+}
+
+function snapPiece(piece, t){
+  piece.userData.placed = true;
+  tweens.push({
+    obj: piece,
+    start: {x:piece.position.x, y:piece.position.y, z:piece.position.z, ry:piece.rotation.y},
+    end:   {x:t.pos.x, y:PIECE_Y, z:t.pos.z, ry:t.rot},
+    t: 0, dur: 0.32,
+    onComplete: ()=>{
+      piece.position.set(t.pos.x, PIECE_Y, t.pos.z);
+      piece.rotation.set(0, t.rot, 0);
+      t.outline.material.color.set(0x5ba8a0);
+      t.outline.material.opacity = 0.8;
+      playSnap();
+      pulsePiece(piece);
+      placedCount++;
+      updateProgress();
+      if(placedCount === pieces.length) onComplete();
+    }
+  });
+  const idx = selectables.indexOf(piece);
+  if(idx>=0) selectables.splice(idx, 1);
+  deselect();
+}
+
+function pulsePiece(piece){
+  const base = 1;
+  tweens.push({
+    obj: piece, isScale:true,
+    start:{s:1.0}, end:{s:1.18}, t:0, dur:0.12,
+    onComplete:()=>{}
+  });
+  tweens.push({
+    obj: piece, isScale:true,
+    start:{s:1.18}, end:{s:1.0}, t:0, dur:0.18, delay:0.12,
+    onComplete:()=>{ piece.scale.set(1,1,1); }
+  });
+}
+
+function flashOutline(t, color){
+  const orig = t.outline.material.color.getHex();
+  const origOp = t.outline.material.opacity;
+  t.outline.material.color.set(color);
+  t.outline.material.opacity = 0.9;
+  setTimeout(()=>{
+    if(!t.outline) return;
+    t.outline.material.color.setHex(orig);
+    t.outline.material.opacity = origOp;
+  }, 350);
+}
+
+/* ============ 完成序列 ============ */
+function onComplete(){
+  state = 'microview';
+  microT = 0;
+  setHint('全部镶嵌完成，欣赏贝壳表面的虹彩光泽…');
+  const p = pieces[0];
+  const camPos = p.position.clone().add(new THREE.Vector3(0.9, 0.55, 0.9));
+  startCameraAnim(
+    camera.position.clone(), camPos,
+    orbit.target.clone(), p.position.clone(),
+    1.3, ()=>{}
+  );
+}
+
+function showScore(){
+  const t = (performance.now() - startTime) / 1000;
+  let stars = 3;
+  if(missCount > 2 || t > 75) stars = 2;
+  if(missCount > 5 || t > 120) stars = 1;
+  const starsEl = document.getElementById('stars');
+  starsEl.innerHTML = '';
+  for(let i=0;i<3;i++){
+    const s = document.createElement('span');
+    s.className = i<stars?'on':'off';
+    s.textContent = '★';
+    starsEl.appendChild(s);
+  }
+  document.getElementById('s-time').textContent = t.toFixed(1)+'s';
+  document.getElementById('s-miss').textContent = missCount;
+  document.getElementById('score-panel').classList.add('show');
+}
+
+/* ============ 相机动画 ============ */
+function startCameraAnim(fromPos, toPos, fromTgt, toTgt, dur, cb){
+  cameraAnim = {fromPos, toPos, fromTgt, toTgt, t:0, dur, cb};
+}
+
+/* ============ 主循环（性能优化：限制30fps） ============ */
+var _last3dRender=0,_3dMinInterval=1000/30;
+function animate(ts){
+  requestAnimationFrame(animate);
+  if(!ts) ts = performance.now();
+  if(ts - _last3dRender < _3dMinInterval) return;
+  _last3dRender = ts;
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  /* 相机动画 */
+  if(cameraAnim){
+    cameraAnim.t += dt;
+    const k = Math.min(cameraAnim.t / cameraAnim.dur, 1);
+    const e = k<0.5 ? 2*k*k : 1-Math.pow(-2*k+2,2)/2;  // easeInOutQuad
+    camera.position.lerpVectors(cameraAnim.fromPos, cameraAnim.toPos, e);
+    orbit.target.lerpVectors(cameraAnim.fromTgt, cameraAnim.toTgt, e);
+    if(k>=1){ const cb=cameraAnim.cb; cameraAnim=null; if(cb) cb(); }
+  }
+
+  /* 补间动画 */
+  for(let i=tweens.length-1;i>=0;i--){
+    const tw = tweens[i];
+    if(tw.delay){ tw.delay -= dt; if(tw.delay>0) continue; tw.delay=0; tw.t=0; }
+    tw.t += dt;
+    const k = Math.min(tw.t/tw.dur, 1);
+    const e = 1-Math.pow(1-k,3);  // easeOutCubic
+    if(tw.isScale){
+      const s = tw.start.s + (tw.end.s - tw.start.s)*e;
+      tw.obj.scale.set(s,s,s);
+    }else{
+      tw.obj.position.x = tw.start.x + (tw.end.x - tw.start.x)*e;
+      tw.obj.position.y = tw.start.y + (tw.end.y - tw.start.y)*e;
+      tw.obj.position.z = tw.start.z + (tw.end.z - tw.start.z)*e;
+      tw.obj.rotation.y = tw.start.ry + (tw.end.ry - tw.start.ry)*e;
+    }
+    if(k>=1){ const cb=tw.onComplete; tweens.splice(i,1); if(cb) cb(); }
+  }
+
+  /* 微观展示：环绕首片贝壳，呈现虹彩随视角变色 */
+  if(state==='microview'){
+    microT += dt;
+    const p = pieces[0];
+    const r = 1.05, a = microT * 0.55;
+    camera.position.set(p.position.x + Math.cos(a)*r, p.position.y + 0.5, p.position.z + Math.sin(a)*r);
+    camera.lookAt(p.position.x, p.position.y + 0.1, p.position.z);
+    orbit.target.set(p.position.x, p.position.y + 0.1, p.position.z);
+    if(microT > 4.5){
+      state = 'reveal';
+      revealT = 0;
+      startCameraAnim(
+        camera.position.clone(), new THREE.Vector3(0, 4.2, 5.5),
+        orbit.target.clone(), new THREE.Vector3(0,0,0),
+        1.3, ()=>{ state='done'; showScore(); }
+      );
+    }
+  }
+
+  /* 选择光环脉动 */
+  updateSelectionRing();
+
+  /* 未放置贝壳片轻微悬浮（增添生机） */
+  if(state==='playing'){
+    const tt = performance.now()*0.001;
+    selectables.forEach((p,i)=>{
+      if(p!==selected){
+        p.position.y = PIECE_Y + Math.sin(tt*1.5 + i)*0.015;
+      }
+    });
+  }
+
+  /* 老匠人待机呼吸动画：缓慢身体摇摆 + 微幅上下浮动（模型无内置动画） */
+  if(craftsmanRoot){
+    const tt2 = performance.now()*0.001;
+    craftsmanRoot.rotation.z = Math.sin(tt2*0.6)*0.012;
+    craftsmanRoot.position.y = Math.sin(tt2*0.8)*0.015;
+    /* 头部微转（如模型含可辨识头部节点则旋转，否则整体微转已足够） */
+    craftsmanRoot.rotation.y = Math.PI*0.12 + Math.sin(tt2*0.35)*0.03;
+  }
+
+  /* 阿莲待机呼吸动画：温柔的呼吸浮动 + 微转头 */
+  if(alianRoot){
+    const tt3 = performance.now()*0.001;
+    alianRoot.position.y = Math.sin(tt3*0.75)*0.018;
+    alianRoot.rotation.z = Math.sin(tt3*0.5)*0.01;
+    alianRoot.rotation.y = -Math.PI*0.18 + Math.sin(tt3*0.28)*0.04;
+  }
+
+  /* 散落贝壳轻微旋转（随机自转，增加灵动感） */
+  if(decorGroup){
+    const tt4 = performance.now()*0.0003;
+    decorGroup.children.forEach((c, i)=>{
+      if(c.isMesh && i > 7 && c.geometry.type === 'SphereGeometry'){
+        c.rotation.y += 0.003 * (i % 3 === 0 ? 1 : -1);
+      }
+    });
+  }
+
+  orbit.update();
+  renderer.render(scene, camera);
+}
+
+/* ============ 音效 ============ */
+function ensureAudio(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+  }
+  if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+}
+
+function playSnap(){
+  ensureAudio();
+  if(!audioCtx) return;
+  const now = audioCtx.currentTime;
+  /* 清脆"嗒"声：高频短音 + 快速衰减 */
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(1320, now);
+  o.frequency.exponentialRampToValueAtTime(680, now+0.08);
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(0.22, now+0.005);
+  g.gain.exponentialRampToValueAtTime(0.0008, now+0.18);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(now); o.stop(now+0.2);
+  /* 低频衬底 */
+  const o2 = audioCtx.createOscillator();
+  const g2 = audioCtx.createGain();
+  o2.type='sine'; o2.frequency.value=330;
+  g2.gain.setValueAtTime(0.0001, now);
+  g2.gain.exponentialRampToValueAtTime(0.08, now+0.01);
+  g2.gain.exponentialRampToValueAtTime(0.0008, now+0.15);
+  o2.connect(g2); g2.connect(audioCtx.destination);
+  o2.start(now); o2.stop(now+0.16);
+}
+
+/* ============ UI ============ */
+function setupUI(){
+  document.getElementById('btn-start').onclick = ()=>{
+    ensureAudio();
+    document.getElementById('intro-overlay').classList.add('hidden');
+    state = 'playing';
+    startTime = performance.now();
+    setHint(defaultHint());
+  };
+  document.getElementById('btn-move').onclick = ()=>setMode('move');
+  document.getElementById('btn-rotate').onclick = ()=>setMode('rotate');
+  document.getElementById('btn-reset').onclick = ()=>resetLevel();
+  document.getElementById('btn-replay').onclick = ()=>{
+    document.getElementById('score-panel').classList.remove('show');
+    resetLevel();
+  };
+  document.getElementById('btn-quality').onclick = (e)=>{
+    quality = quality==='high'?'low':'high';
+    e.target.textContent = '画质：'+(quality==='high'?'高':'低');
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality==='high'?2:1));
+    renderer.shadowMap.enabled = quality==='high';
+    if(spot) spot.castShadow = quality==='high';
+  };
+}
+
+function setMode(m){
+  mode = m;
+  document.getElementById('btn-move').classList.toggle('active', m==='move');
+  document.getElementById('btn-rotate').classList.toggle('active', m==='rotate');
+  if(selected){
+    setHint('当前：'+(m==='move'?'移动模式 — 拖动贝壳至凹槽':'旋转模式 — 左右拖动调整角度')+'（靠近凹槽会自动吸附）');
+  }else{
+    setHint(m==='move'?'移动模式：点击托盘贝壳片，拖动至凹槽':'旋转模式：点击贝壳片，左右拖动调整角度');
+  }
+}
+
+function defaultHint(){
+  return '点击托盘中的贝壳片拾取，拖动至漆面凹槽处松手即可镶嵌';
+}
+
+function setHint(txt){
+  document.getElementById('hint-text').textContent = txt;
+}
+
+function updateProgress(){
+  document.getElementById('prog').textContent = placedCount;
+}
+
+function resetLevel(){
+  clearLevel();
+  buildLevel();
+  state = 'intro';
+  document.getElementById('intro-overlay').classList.remove('hidden');
+  document.getElementById('score-panel').classList.remove('show');
+  setHint(defaultHint());
+  startCameraAnim(
+    camera.position.clone(), new THREE.Vector3(0, 8, 6),
+    orbit.target.clone(), new THREE.Vector3(0,0,0),
+    1.0, ()=>{}
+  );
+  setTimeout(()=>{
+    startCameraAnim(
+      new THREE.Vector3(0,8,6), new THREE.Vector3(0,4.2,5.5),
+      new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0),
+      1.2, ()=>{}
+    );
+  }, 100);
+}
+
+function onResize(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/* 启动：module 脚本在 DOM 解析后执行，直接初始化 */
+init();
+/* 兜底超时：模型加载异常时 60s 后强制隐藏加载页（70MB大文件需要更长时间） */
+window.addEventListener('load', ()=>{
+  setTimeout(hideLoader, 60000);
+});
+</script>
+</body>
+</html>
