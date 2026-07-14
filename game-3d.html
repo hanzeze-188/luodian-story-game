@@ -1107,7 +1107,6 @@ function initBGM(){
   const audio = new Audio();
   audio.loop = true;
   audio.preload = 'auto';
-  audio.crossOrigin = 'anonymous';
   bgmAudio = audio;
   
   /* 尝试多个路径加载BGM，确保兼容性 */
