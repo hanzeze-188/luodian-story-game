@@ -1094,91 +1094,110 @@ function animate(ts){
   renderer.render(scene, camera);
 }
 
-/* ============ 背景音乐系统 —— 固定使用 bgm_dianguang.mp3 ============ */
+/* ============ 背景音乐系统 —— 固定使用 bgm_dianguang.mp3，唯一一首BGM ============ */
 let bgmAudio=null;
-let bgmGain=null;
 let bgmStarted=false;
 let bgmLoaded=false;
+let bgmInteractionBound=false;
 
 function initBGM(){
-  if(bgmAudio) return;
-  ensureAudio();
-  if(!audioCtx) return;
+  if(bgmAudio) return bgmAudio;
   
-  try{
-    bgmGain = audioCtx.createGain();
-    bgmGain.gain.value = 0;
-    bgmGain.connect(audioCtx.destination);
-  }catch(e){ return; }
+  /* 创建唯一的audio元素 */
+  const audio = new Audio();
+  audio.loop = true;
+  audio.preload = 'auto';
+  audio.crossOrigin = 'anonymous';
+  bgmAudio = audio;
   
-  /* 尝试多个路径加载BGM */
-  const tryPaths = ['assets/audio/bgm_dianguang.mp3','bgm_dianguang.mp3'];
+  /* 尝试多个路径加载BGM，确保兼容性 */
+  const tryPaths = ['assets/audio/bgm_dianguang.mp3','assets/bgm_dianguang.mp3','bgm_dianguang.mp3'];
   let pathIdx = 0;
   
-  function tryLoadBGM(){
+  function tryLoadNext(){
     if(pathIdx >= tryPaths.length){
-      console.warn('[3D] BGM所有路径加载失败');
+      console.warn('[3D] 所有BGM路径加载失败');
       return;
     }
-    const audio = new Audio();
-    audio.loop = true;
-    audio.preload = 'auto';
-    audio.src = tryPaths[pathIdx];
+    console.log('[3D] 尝试加载BGM:', tryPaths[pathIdx]);
     
-    const errHandler = function(){
-      pathIdx++;
-      tryLoadBGM();
-    };
+    /* 清除之前的事件监听 */
+    audio.onerror = null;
+    audio.oncanplaythrough = null;
     
-    audio.addEventListener('canplaythrough', function(){
-      audio.removeEventListener('error', errHandler);
-      bgmAudio = audio;
+    audio.oncanplaythrough = function(){
       bgmLoaded = true;
       console.log('[3D] BGM加载成功:', tryPaths[pathIdx]);
+      /* 如果已经调用过startBGM，加载完成后立即播放 */
       if(bgmStarted){
-        startBGMPlayback();
+        bgmAudio.volume = 0.40;
+        tryPlayBGM();
       }
-    }, false);
-    audio.addEventListener('error', errHandler, false);
-    try{ audio.load(); }catch(e){ errHandler(); }
+    };
+    audio.onerror = function(){
+      console.warn('[3D] BGM加载失败，尝试下一个路径:', tryPaths[pathIdx]);
+      pathIdx++;
+      tryLoadNext();
+    };
+    
+    try{
+      audio.src = tryPaths[pathIdx];
+      audio.load();
+    }catch(e){
+      pathIdx++;
+      tryLoadNext();
+    }
   }
-  tryLoadBGM();
+  tryLoadNext();
+  return audio;
 }
 
-function startBGMPlayback(){
-  if(!bgmAudio || !bgmGain || !audioCtx) return;
+function tryPlayBGM(){
+  if(!bgmAudio || !bgmLoaded) return;
   try{
-    if(bgmAudio.paused){
-      bgmAudio.volume = 1;
-      bgmAudio.play().catch(function(){ console.warn('[3D] BGM自动播放被阻止'); });
+    const promise = bgmAudio.play();
+    if(promise !== undefined){
+      promise.catch(function(err){
+        console.log('[3D] 需要用户交互后才能播放BGM');
+        /* 在第一次用户交互时重试播放 */
+        if(!bgmInteractionBound){
+          bgmInteractionBound = true;
+          const onInteract = function(){
+            document.removeEventListener('click', onInteract);
+            document.removeEventListener('touchstart', onInteract);
+            document.removeEventListener('keydown', onInteract);
+            tryPlayBGM();
+          };
+          document.addEventListener('click', onInteract, {once:true});
+          document.addEventListener('touchstart', onInteract, {once:true});
+          document.addEventListener('keydown', onInteract, {once:true});
+        }
+      });
     }
-    if(!bgmAudio._srcNode){
-      try{
-        const src = audioCtx.createMediaElementSource(bgmAudio);
-        src.connect(bgmGain);
-        bgmAudio._srcNode = src;
-      }catch(e){
-        /* 可能已经连接过，直接用audio元素播放 */
-        bgmAudio.volume = 0.35;
-      }
-    }
-    /* 淡入 */
-    const now = audioCtx.currentTime;
-    bgmGain.gain.cancelScheduledValues(now);
-    bgmGain.gain.setValueAtTime(bgmGain.gain.value, now);
-    bgmGain.gain.linearRampToValueAtTime(0.35, now + 1.0);
-  }catch(e){ console.warn('[3D] BGM播放失败:', e); }
+  }catch(e){
+    console.warn('[3D] 播放异常:', e);
+  }
 }
 
 function startBGM(){
   if(bgmStarted) return;
   bgmStarted = true;
-  initBGM();
+  if(!bgmAudio) initBGM();
   ensureAudio();
   if(bgmLoaded){
-    startBGMPlayback();
+    bgmAudio.volume = 0.40;
+    tryPlayBGM();
   }
 }
+
+/* 页面加载时立即预加载BGM */
+(function(){
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ initBGM(); });
+  }else{
+    initBGM();
+  }
+})();
 
 /* ============ 音效 ============ */
 function ensureAudio(){

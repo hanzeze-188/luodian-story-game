@@ -1558,9 +1558,10 @@ else if(G.scene==='title')targetMood='title';
 else targetMood='prologue';
 /* BGM 始终全局循环播放，不同场景仅调整音量，不停止 */
 if(targetMood&&targetMood!==MusicSys.currentMood){if(G._musicStarted)MusicSys.play(targetMood)}
-/* 确保 BGM 始终在播放（全局循环） */
+/* 确保 BGM 始终在播放（全局循环）- 使用MusicSys内置的_tryPlay处理自动播放限制 */
 if(G._musicStarted && MusicSys.bgmLoaded && MusicSys.bgm && MusicSys.bgm.paused){
-  try{MusicSys.bgm.play().catch(function(){})}catch(e){}
+  MusicSys._applyVolume();
+  MusicSys._tryPlay();
 }
 if(titleVisible&&!G._titleAnimDone){
 frameCount++;
@@ -1591,121 +1592,142 @@ success:function(){if(!G.settings.sound)return;this.init();if(!this.ctx)return;[
 fail:function(){if(!G.settings.sound)return;this.init();if(!this.ctx)return;var o=this.ctx.createOscillator(),g=this.ctx.createGain();o.connect(g);g.connect(this.masterGain);o.frequency.value=180;o.type='sawtooth';g.gain.setValueAtTime(.05,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+.2);o.start(this.ctx.currentTime);o.stop(this.ctx.currentTime+.2)},
 swoosh:function(){if(!G.settings.sound)return;this.init();if(!this.ctx)return;var o=this.ctx.createOscillator(),g=this.ctx.createGain();o.connect(g);g.connect(this.masterGain);o.frequency.setValueAtTime(350,this.ctx.currentTime);o.frequency.exponentialRampToValueAtTime(1000,this.ctx.currentTime+.12);g.gain.setValueAtTime(.04,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+.12);o.start(this.ctx.currentTime);o.stop(this.ctx.currentTime+.12)}};
 
-/* ===== 背景音乐系统 —— 固定使用 bgm_dianguang.mp3，不使用程序化音乐 ===== */
+/* ===== 背景音乐系统 —— 固定使用 bgm_dianguang.mp3，唯一一首BGM ===== */
 var MusicSys={
-ctx:null,bgmGain:null,currentMood:null,started:false,
+currentMood:null,started:false,
 bgm:null,bgmLoaded:false,bgmLoading:false,
-bgmSrc:'assets/audio/bgm_dianguang.mp3',
 /* 不同场景仅微调音量，始终播放同一首BGM */
 moodVolumes:{title:0.45,prologue:0.40,craft:0.35,ending:0.50},
-init:function(){
-  if(this.ctx)return;
-  try{
-    this.ctx=new(window.AudioContext||window.webkitAudioContext)();
-    this.bgmGain=this.ctx.createGain();
-    this.bgmGain.gain.value=0;
-    this.bgmGain.connect(this.ctx.destination);
-  }catch(e){}
-},
-_loadBGM:function(){
-  if(this.bgmLoaded||this.bgmLoading)return;
-  this.bgmLoading=true;
+_initAudio:function(){
+  if(this.bgm)return this.bgm;
   var self=this;
+  /* 创建唯一的audio元素 */
+  var audio=new Audio();
+  audio.loop=true;
+  audio.preload='auto';
+  audio.crossOrigin='anonymous';
+  this.bgm=audio;
+  
   /* 尝试多个路径加载，确保兼容性 */
-  var tryPaths=['assets/audio/bgm_dianguang.mp3','bgm_dianguang.mp3'];
+  var tryPaths=['assets/audio/bgm_dianguang.mp3','assets/bgm_dianguang.mp3','bgm_dianguang.mp3'];
   var pathIdx=0;
-  function tryLoad(){
+  
+  function tryLoadNext(){
     if(pathIdx>=tryPaths.length){
       console.warn('[MusicSys] 所有BGM路径加载失败');
       self.bgmLoading=false;
       return;
     }
-    var audio=new Audio();
-    audio.loop=true;
-    audio.preload='auto';
-    audio.src=tryPaths[pathIdx];
-    var errHandler=function(){
-      pathIdx++;
-      tryLoad();
-    };
-    audio.addEventListener('canplaythrough',function(){
-      audio.removeEventListener('error',errHandler);
+    console.log('[MusicSys] 尝试加载BGM:',tryPaths[pathIdx]);
+    self.bgmLoading=true;
+    
+    /* 清除之前的事件监听 */
+    audio.onerror=null;
+    audio.oncanplaythrough=null;
+    
+    audio.oncanplaythrough=function(){
       self.bgmLoaded=true;
       self.bgmLoading=false;
-      if(self.bgm===null)self.bgm=audio;
-      if(self.started&&self.ctx&&self.bgmGain){
-        try{
-          var src=self.ctx.createMediaElementSource(audio);
-          src.connect(self.bgmGain);
-          self.bgm._src=src;
-        }catch(e){}
-        /* 加载完成后自动开始播放 */
-        var vol=G.settings.musicVolume!==undefined?G.settings.musicVolume/100:1;
-        var targetVol=(self.moodVolumes[self.currentMood]||0.40)*vol;
-        self.bgmGain.gain.cancelScheduledValues(self.ctx.currentTime);
-        self.bgmGain.gain.linearRampToValueAtTime(targetVol,self.ctx.currentTime+1.0);
-        try{
-          if(audio.paused){
-            audio.volume=1;
-            audio.play().catch(function(){console.warn('[MusicSys] BGM自动播放被阻止')});
-          }
-        }catch(e){}
-      }
       console.log('[MusicSys] BGM加载成功:',tryPaths[pathIdx]);
-    },false);
-    audio.addEventListener('error',errHandler,false);
-    try{audio.load()}catch(e){errHandler()};
+      /* 如果已经调用过play，加载完成后立即播放 */
+      if(self.started){
+        self._applyVolume();
+        self._tryPlay();
+      }
+    };
+    audio.onerror=function(){
+      console.warn('[MusicSys] BGM加载失败，尝试下一个路径:',tryPaths[pathIdx]);
+      pathIdx++;
+      tryLoadNext();
+    };
+    
+    try{
+      audio.src=tryPaths[pathIdx];
+      audio.load();
+    }catch(e){
+      pathIdx++;
+      tryLoadNext();
+    }
   }
-  tryLoad();
+  
+  tryLoadNext();
+  return audio;
+},
+_tryPlay:function(){
+  if(!this.bgm||!this.bgmLoaded)return;
+  var self=this;
+  try{
+    var promise=this.bgm.play();
+    if(promise!==undefined){
+      promise.catch(function(err){
+        console.log('[MusicSys] 需要用户交互后才能播放BGM');
+        /* 在第一次用户交互时重试播放 */
+        if(!self._interactionBound){
+          self._interactionBound=true;
+          var onInteract=function(){
+            document.removeEventListener('click',onInteract);
+            document.removeEventListener('touchstart',onInteract);
+            document.removeEventListener('keydown',onInteract);
+            self._tryPlay();
+          };
+          document.addEventListener('click',onInteract,{once:true});
+          document.addEventListener('touchstart',onInteract,{once:true});
+          document.addEventListener('keydown',onInteract,{once:true});
+        }
+      });
+    }
+  }catch(e){
+    console.warn('[MusicSys] 播放异常:',e);
+  }
+},
+_applyVolume:function(){
+  if(!this.bgm)return;
+  var vol=G.settings.musicVolume!==undefined?G.settings.musicVolume/100:0.6;
+  var targetVol=(this.moodVolumes[this.currentMood]||0.40)*vol;
+  this.bgm.volume=targetVol;
 },
 setVolume:function(v){
-  this.init();
-  if(!this.ctx)return;
-  var vol=Math.max(0,Math.min(100,v))/100;
-  if(this.bgmGain){
-    var targetVol=(this.moodVolumes[this.currentMood]||0.40)*vol;
-    this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
-    this.bgmGain.gain.linearRampToValueAtTime(targetVol,this.ctx.currentTime+.3);
-  }
+  if(!this.bgm)this._initAudio();
+  this._applyVolume();
 },
 play:function(mood){
   if(!G.settings.music)return;
-  this.init();
-  if(!this.ctx)return;
-  this._loadBGM();
   this.currentMood=mood;
   this.started=true;
-  var vol=G.settings.musicVolume!==undefined?G.settings.musicVolume/100:1;
-  var targetVol=(this.moodVolumes[mood]||0.40)*vol;
-  if(this.bgmLoaded&&this.bgm&&this.bgmGain){
-    this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
-    this.bgmGain.gain.linearRampToValueAtTime(targetVol,this.ctx.currentTime+1.0);
-    try{
-      if(this.bgm.paused){
-        this.bgm.volume=1;
-        this.bgm.play().catch(function(){console.warn('[MusicSys] BGM自动播放被阻止，等待用户交互')});
-      }
-    }catch(e){}
-    try{
-      if(!this.bgm._src&&this.ctx){
-        var s=this.ctx.createMediaElementSource(this.bgm);
-        s.connect(this.bgmGain);
-        this.bgm._src=s;
-      }
-    }catch(e){}
+  if(!this.bgm)this._initAudio();
+  this._applyVolume();
+  if(this.bgmLoaded){
+    this._tryPlay();
   }
 },
 stop:function(){
-  if(!this.ctx)return;
   this.started=false;
-  if(this.bgmGain){
-    this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
-    this.bgmGain.gain.linearRampToValueAtTime(0,this.ctx.currentTime+1);
+  if(this.bgm){
     var self=this;
-    setTimeout(function(){if(self.bgm&&!self.started)self.bgm.pause()},1200);
+    /* 渐隐后暂停 */
+    var startVol=this.bgm.volume;
+    var steps=20;
+    var step=0;
+    var fadeInt=setInterval(function(){
+      step++;
+      self.bgm.volume=startVol*(1-step/steps);
+      if(step>=steps){
+        clearInterval(fadeInt);
+        self.bgm.pause();
+        self.bgm.volume=startVol;
+      }
+    },30);
   }
 }
 };
+/* 页面加载时立即预加载BGM */
+(function(){
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){MusicSys._initAudio()});
+  }else{
+    MusicSys._initAudio();
+  }
+})();
 
 var _typeRaf=null,_typeCb=null;
 function typewrite(el,text,cb){
