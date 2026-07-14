@@ -1591,76 +1591,120 @@ success:function(){if(!G.settings.sound)return;this.init();if(!this.ctx)return;[
 fail:function(){if(!G.settings.sound)return;this.init();if(!this.ctx)return;var o=this.ctx.createOscillator(),g=this.ctx.createGain();o.connect(g);g.connect(this.masterGain);o.frequency.value=180;o.type='sawtooth';g.gain.setValueAtTime(.05,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+.2);o.start(this.ctx.currentTime);o.stop(this.ctx.currentTime+.2)},
 swoosh:function(){if(!G.settings.sound)return;this.init();if(!this.ctx)return;var o=this.ctx.createOscillator(),g=this.ctx.createGain();o.connect(g);g.connect(this.masterGain);o.frequency.setValueAtTime(350,this.ctx.currentTime);o.frequency.exponentialRampToValueAtTime(1000,this.ctx.currentTime+.12);g.gain.setValueAtTime(.04,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+.12);o.start(this.ctx.currentTime);o.stop(this.ctx.currentTime+.12)}};
 
-/* ===== 背景音乐系统 ===== */
+/* ===== 背景音乐系统 —— 固定使用 bgm_dianguang.mp3，不使用程序化音乐 ===== */
 var MusicSys={
-ctx:null,master:null,filter:null,shaper:null,delay:null,feedback:null,delayMix:null,currentMood:null,timer:null,activeNodes:[],started:false,
-bgm:null,bgmGain:null,bgmLoaded:false,bgmLoading:false,bgmSrc:'assets/audio/bgm_dianguang.mp3',bgmKey:'bgm_dianguang',_bgmSwitching:false,
-bgmAssets:{'bgm_dianguang':'assets/audio/bgm_dianguang.mp3','bgm_dianguang_original':'assets/audio/背景音乐《钿光》_原版.mp3'},
-moods:{
-title:{root:261.63,scale:[0,2,4,7,9,12,14],tempo:2200,wave:'sine',vol:.06,chords:[[0,4,7],[2,7,9],[4,9,12],[5,9,12]],melody:[0,4,7,9,7,4,12,9]},
-prologue:{root:220,scale:[0,2,4,7,9,12],tempo:2800,wave:'sine',vol:.05,chords:[[0,4,7],[5,9,12],[7,9,12],[2,5,9]],melody:[0,7,4,9,7,12,9,4]},
-craft:{root:293.66,scale:[0,2,3,5,7,10,12],tempo:1800,wave:'triangle',vol:.04,chords:[[0,3,7],[5,7,12],[7,10,12],[2,5,10]],melody:[0,3,5,7,5,3,7,5]},
-ending:{root:196,scale:[0,2,4,7,9,12,16],tempo:3200,wave:'sine',vol:.07,chords:[[0,4,7],[5,9,12],[4,7,12],[2,5,9]],melody:[0,4,7,12,9,7,4,0]}
+ctx:null,bgmGain:null,currentMood:null,started:false,
+bgm:null,bgmLoaded:false,bgmLoading:false,
+bgmSrc:'assets/audio/bgm_dianguang.mp3',
+/* 不同场景仅微调音量，始终播放同一首BGM */
+moodVolumes:{title:0.45,prologue:0.40,craft:0.35,ending:0.50},
+init:function(){
+  if(this.ctx)return;
+  try{
+    this.ctx=new(window.AudioContext||window.webkitAudioContext)();
+    this.bgmGain=this.ctx.createGain();
+    this.bgmGain.gain.value=0;
+    this.bgmGain.connect(this.ctx.destination);
+  }catch(e){}
 },
-_warmCurve:function(amount){var n=2048,curve=new Float32Array(n),deg=Math.PI/180;for(var i=0;i<n;i++){var x=i*2/n-1;curve[i]=(3+amount)*x*20*deg/(Math.PI+amount*Math.abs(x))}return curve},
-init:function(){if(this.ctx)return;try{this.ctx=new(window.AudioContext||window.webkitAudioContext)();this.master=this.ctx.createGain();this.master.gain.value=0;
-this.bgmGain=this.ctx.createGain();this.bgmGain.gain.value=0;this.bgmGain.connect(this.ctx.destination);
-this.filter=this.ctx.createBiquadFilter();this.filter.type='lowpass';this.filter.frequency.value=2400;this.filter.Q.value=.8;
-this.shaper=this.ctx.createWaveShaper();this.shaper.curve=this._warmCurve(.35);
-this.delay=this.ctx.createDelay(1.5);this.delay.delayTime.value=.34;
-this.feedback=this.ctx.createGain();this.feedback.gain.value=.26;
-this.delayMix=this.ctx.createGain();this.delayMix.gain.value=.2;
-this.master.connect(this.filter);this.filter.connect(this.shaper);this.shaper.connect(this.ctx.destination);
-this.filter.connect(this.delay);this.delay.connect(this.feedback);this.feedback.connect(this.delay);
-this.delay.connect(this.delayMix);this.delayMix.connect(this.ctx.destination);
-}catch(e){}},
-_loadBGM:function(){if(this.bgmLoaded||this.bgmLoading)return;this.bgmLoading=true;var self=this;
-try{var audio=new Audio();audio.loop=true;audio.preload='auto';audio.src=this.bgmSrc;
-audio.addEventListener('canplaythrough',function(){self.bgmLoaded=true;self.bgmLoading=false;if(self.bgm===null)self.bgm=audio;if(self.started&&self.ctx&&self.bgmGain){try{var src=self.ctx.createMediaElementSource(audio);src.connect(self.bgmGain);self.bgm._src=src}catch(e){}}},false);
-audio.addEventListener('error',function(){console.warn('[MusicSys] BGM加载失败，使用程序化音乐');self.bgmLoaded=false;self.bgmLoading=false;},false);
-audio.load();
-}catch(e){this.bgmLoading=false;}},
-switchBGM:function(k,o){var self=this;this.init();if(!this.ctx||this._bgmSwitching)return;var s=this.bgmAssets[k];if(!s){console.warn('[MusicSys] BGM not found:',k);return}if(this.bgmKey===k&&this.bgmLoaded&&this.bgm)return;o=o||{};var fo=o.fadeOut!==undefined?o.fadeOut:.8,fi=o.fadeIn!==undefined?o.fadeIn:1.2;this._bgmSwitching=true;var v=G.settings.musicVolume!==undefined?G.settings.musicVolume/100:1,tg=.35*v,ob=this.bgm,oh=this.bgmLoaded&&ob&&!ob.paused,n=this.ctx.currentTime;if(this.bgmGain){this.bgmGain.gain.cancelScheduledValues(n);if(oh){this.bgmGain.gain.setValueAtTime(this.bgmGain.gain.value,n);this.bgmGain.gain.linearRampToValueAtTime(0,n+fo)}}setTimeout(function(){if(ob){try{ob.pause()}catch(e1){}try{if(ob._src){ob._src.disconnect();ob._src=null}}catch(e2){}ob=null}self.bgm=null;self.bgmLoaded=false;self.bgmLoading=false;self.bgmKey=k;self.bgmSrc=s;var a=new Audio();a.loop=true;a.preload='auto';a.src=s;var onPlay=function(){a.removeEventListener('canplaythrough',onPlay);self.bgmLoaded=true;self.bgmLoading=false;self.bgm=a;if(self.ctx&&self.bgmGain){try{var src=self.ctx.createMediaElementSource(a);src.connect(self.bgmGain);a._src=src}catch(e3){}}if(self.started||o.autoPlay!==false){try{a.volume=1;a.play().catch(function(){console.warn('[MusicSys] BGM autoplay blocked')})}catch(e4){}var t=self.ctx.currentTime;if(self.bgmGain){self.bgmGain.gain.cancelScheduledValues(t);self.bgmGain.gain.setValueAtTime(0,t);self.bgmGain.gain.linearRampToValueAtTime(tg,t+fi)}}self._bgmSwitching=false};var onErr=function(){a.removeEventListener('error',onErr);console.warn('[MusicSys] BGM load failed:',k);self.bgmLoaded=false;self.bgmLoading=false;self._bgmSwitching=false};a.addEventListener('canplaythrough',onPlay,false);a.addEventListener('error',onErr,false);self.bgmLoading=true;try{a.load()}catch(e5){self.bgmLoading=false;self._bgmSwitching=false}},oh?fo*1000:0);},
-setVolume:function(v){this.init();if(!this.ctx)return;var vol=Math.max(0,Math.min(100,v))/100;
-if(this.bgmGain){this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);this.bgmGain.gain.linearRampToValueAtTime(vol*0.35,this.ctx.currentTime+.3)}
-if(this.master){this.master.gain.cancelScheduledValues(this.ctx.currentTime);if(this.started&&this.currentMood){var cfg=this.moods[this.currentMood]||this.moods.prologue;this.master.gain.linearRampToValueAtTime(cfg.vol*vol,this.ctx.currentTime+.3)}}},
-play:function(mood){if(!G.settings.music)return;this.init();if(!this.ctx)return;
-this._loadBGM();
-if(this.currentMood===mood&&this.started)return;
-this.currentMood=mood;this.started=true;
-var vol=G.settings.musicVolume!==undefined?G.settings.musicVolume/100:1;
-if(this.master){this.master.gain.cancelScheduledValues(this.ctx.currentTime);this.master.gain.linearRampToValueAtTime((this.moods[mood]?this.moods[mood].vol:.05)*vol,this.ctx.currentTime+1.5)}
-if(this.bgmLoaded&&this.bgm&&this.bgmGain){
-this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);this.bgmGain.gain.linearRampToValueAtTime(0.35*vol,this.ctx.currentTime+1.5);
-try{if(this.bgm.paused){this.bgm.volume=1;this.bgm.play().catch(function(){console.warn('[MusicSys] BGM自动播放被阻止，等待用户交互')})}}catch(e){}
-try{if(!this.bgm._src&&this.ctx){var s=this.ctx.createMediaElementSource(this.bgm);s.connect(this.bgmGain);this.bgm._src=s}}catch(e){}
+_loadBGM:function(){
+  if(this.bgmLoaded||this.bgmLoading)return;
+  this.bgmLoading=true;
+  var self=this;
+  /* 尝试多个路径加载，确保兼容性 */
+  var tryPaths=['assets/audio/bgm_dianguang.mp3','bgm_dianguang.mp3'];
+  var pathIdx=0;
+  function tryLoad(){
+    if(pathIdx>=tryPaths.length){
+      console.warn('[MusicSys] 所有BGM路径加载失败');
+      self.bgmLoading=false;
+      return;
+    }
+    var audio=new Audio();
+    audio.loop=true;
+    audio.preload='auto';
+    audio.src=tryPaths[pathIdx];
+    var errHandler=function(){
+      pathIdx++;
+      tryLoad();
+    };
+    audio.addEventListener('canplaythrough',function(){
+      audio.removeEventListener('error',errHandler);
+      self.bgmLoaded=true;
+      self.bgmLoading=false;
+      if(self.bgm===null)self.bgm=audio;
+      if(self.started&&self.ctx&&self.bgmGain){
+        try{
+          var src=self.ctx.createMediaElementSource(audio);
+          src.connect(self.bgmGain);
+          self.bgm._src=src;
+        }catch(e){}
+        /* 加载完成后自动开始播放 */
+        var vol=G.settings.musicVolume!==undefined?G.settings.musicVolume/100:1;
+        var targetVol=(self.moodVolumes[self.currentMood]||0.40)*vol;
+        self.bgmGain.gain.cancelScheduledValues(self.ctx.currentTime);
+        self.bgmGain.gain.linearRampToValueAtTime(targetVol,self.ctx.currentTime+1.0);
+        try{
+          if(audio.paused){
+            audio.volume=1;
+            audio.play().catch(function(){console.warn('[MusicSys] BGM自动播放被阻止')});
+          }
+        }catch(e){}
+      }
+      console.log('[MusicSys] BGM加载成功:',tryPaths[pathIdx]);
+    },false);
+    audio.addEventListener('error',errHandler,false);
+    try{audio.load()}catch(e){errHandler()};
+  }
+  tryLoad();
+},
+setVolume:function(v){
+  this.init();
+  if(!this.ctx)return;
+  var vol=Math.max(0,Math.min(100,v))/100;
+  if(this.bgmGain){
+    var targetVol=(this.moodVolumes[this.currentMood]||0.40)*vol;
+    this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.bgmGain.gain.linearRampToValueAtTime(targetVol,this.ctx.currentTime+.3);
+  }
+},
+play:function(mood){
+  if(!G.settings.music)return;
+  this.init();
+  if(!this.ctx)return;
+  this._loadBGM();
+  this.currentMood=mood;
+  this.started=true;
+  var vol=G.settings.musicVolume!==undefined?G.settings.musicVolume/100:1;
+  var targetVol=(this.moodVolumes[mood]||0.40)*vol;
+  if(this.bgmLoaded&&this.bgm&&this.bgmGain){
+    this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.bgmGain.gain.linearRampToValueAtTime(targetVol,this.ctx.currentTime+1.0);
+    try{
+      if(this.bgm.paused){
+        this.bgm.volume=1;
+        this.bgm.play().catch(function(){console.warn('[MusicSys] BGM自动播放被阻止，等待用户交互')});
+      }
+    }catch(e){}
+    try{
+      if(!this.bgm._src&&this.ctx){
+        var s=this.ctx.createMediaElementSource(this.bgm);
+        s.connect(this.bgmGain);
+        this.bgm._src=s;
+      }
+    }catch(e){}
+  }
+},
+stop:function(){
+  if(!this.ctx)return;
+  this.started=false;
+  if(this.bgmGain){
+    this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.bgmGain.gain.linearRampToValueAtTime(0,this.ctx.currentTime+1);
+    var self=this;
+    setTimeout(function(){if(self.bgm&&!self.started)self.bgm.pause()},1200);
+  }
 }
-if(!this.timer)this.scheduleNote()},
-stop:function(){if(!this.ctx)return;this.started=false;this.currentMood=null;
-if(this.master){this.master.gain.cancelScheduledValues(this.ctx.currentTime);this.master.gain.linearRampToValueAtTime(0,this.ctx.currentTime+1)}
-if(this.bgmGain){this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);this.bgmGain.gain.linearRampToValueAtTime(0,this.ctx.currentTime+1);var self=this;setTimeout(function(){if(self.bgm&&!self.started)self.bgm.pause()},1200)}
-if(this.timer){clearTimeout(this.timer);this.timer=null}},
-scheduleNote:function(){var self=this;if(!self.started||!self.ctx)return;var mood=self.currentMood;var cfg=self.moods[mood]||self.moods.prologue;var scale=cfg.scale;var now=self.ctx.currentTime;
-if(self.noteCount===undefined)self.noteCount=0;self.noteCount++;
-if(cfg.chords&&(self.noteCount%4===1)){
-if(self.chordIdx===undefined)self.chordIdx=0;
-var chord=cfg.chords[self.chordIdx%cfg.chords.length];self.chordIdx++;
-chord.forEach(function(deg2){self._playNote(cfg.root*Math.pow(2,deg2/12),cfg.wave,now,3.6,0.10,true)});
-}
-var useMelody=cfg.melody&&Math.random()<.55;var deg;
-if(useMelody){if(self.melIdx===undefined)self.melIdx=0;deg=cfg.melody[self.melIdx%cfg.melody.length];self.melIdx++}
-else{deg=scale[Math.floor(Math.random()*scale.length)]}
-var oct=Math.random()<.3?1:0;var freq=cfg.root*Math.pow(2,(deg+oct*12)/12);var dur=1.8+Math.random()*2.2;
-self._playNote(freq,cfg.wave,now,dur,0.5,false);
-if(Math.random()<.4)self._playNote(freq/2,'triangle',now,dur*1.2,0.18,false);
-if(Math.random()<.25&&self.started){var f2=cfg.root*Math.pow(2,(scale[Math.floor(Math.random()*scale.length)]+12)/12);self._playNote(f2,cfg.wave,now+.3,dur,0.3,false)}
-var nextDelay=cfg.tempo*(.6+Math.random()*.8);self.timer=setTimeout(function(){self.scheduleNote()},nextDelay)},
-_playNote:function(freq,wave,now,dur,peak,tremolo){var self=this;if(!self.ctx)return;var o=self.ctx.createOscillator(),g=self.ctx.createGain();o.type=wave;o.frequency.value=freq;o.connect(g);
-var a=0.04,dp=0.3,s=peak*0.6,r=0.6;var susStart=now+a+dp;var relStart=Math.max(susStart,now+dur-r);
-g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(peak,now+a);g.gain.linearRampToValueAtTime(s,susStart);g.gain.setValueAtTime(s,relStart);g.gain.exponentialRampToValueAtTime(0.001,now+dur);
-if(tremolo&&dur>2){var tg=self.ctx.createGain();tg.gain.value=1;var lfo=self.ctx.createOscillator(),lfoG=self.ctx.createGain();lfo.frequency.value=4.5;lfoG.gain.value=0.25;lfo.connect(lfoG);lfoG.connect(tg.gain);g.connect(tg);tg.connect(self.master);lfo.start(now);lfo.stop(now+dur)}
-else{g.connect(self.master)}
-o.start(now);o.stop(now+dur)}
 };
 
 var _typeRaf=null,_typeCb=null;

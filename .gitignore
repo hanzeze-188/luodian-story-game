@@ -13,6 +13,7 @@ $RECYCLE.BIN/
 
 # 临时目录
 temp/
+temp-deploy-repo/
 tmp/
 .cache/
 
@@ -71,3 +72,5 @@ wheels/
 
 # Trae 临时文件
 .trae-html-share-packages/
+
+.vercel
